@@ -53,3 +53,17 @@ def test_deepseek_v4_mla_projection_names_are_attention_linears():
         )
         assert kind == "attention_linear"
         assert {"attention", "linear"} <= set(tags)
+
+
+def test_deepseek_v4_attention_projection_names_are_selectable():
+    for leaf in ("wkv", "wo_a", "wo_b"):
+        kind, tags = classify_weight(f"layers.0.attn.{leaf}.weight")
+        assert kind == "attention_linear"
+        assert set(tags) == {"attention", "linear"}
+
+
+def test_deepseek_v4_runtime_compressor_is_not_quantizable_attention():
+    for leaf in ("wkv", "wgate"):
+        assert classify_weight(
+            f"layers.2.attn.compressor.{leaf}.weight"
+        ) == (None, ())

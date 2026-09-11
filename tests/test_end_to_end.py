@@ -47,6 +47,65 @@ def _make_checkpoint(path: Path) -> dict[str, str]:
     return weight_map
 
 
+def _make_deepseek_v4_mixed_checkpoint(path: Path) -> None:
+    """Small checkpoint with the same source-format split as DeepSeek-V4."""
+    path.mkdir()
+    state: dict[str, torch.Tensor] = {}
+
+    for projection in ("w1", "w2", "w3"):
+        name = f"layers.0.ffn.experts.0.{projection}.weight"
+        state[name] = torch.full((2, 16), 0x21, dtype=torch.int8)
+        state[name[: -len('.weight')] + ".scale"] = torch.ones(
+            (2, 1), dtype=torch.float32
+        )
+
+    fp8_names = [
+        *(f"layers.0.ffn.shared_experts.{proj}.weight" for proj in ("w1", "w2", "w3")),
+        *(f"layers.0.attn.{proj}.weight" for proj in ("wq_a", "wkv", "wq_b", "wo_a", "wo_b")),
+        "mtp.0.e_proj.weight",
+        "mtp.0.h_proj.weight",
+    ]
+    for name in fp8_names:
+        state[name] = torch.ones((128, 128), dtype=torch.float8_e4m3fn)
+        state[name[: -len('.weight')] + ".scale"] = torch.ones(
+            (1, 1), dtype=torch.float32
+        )
+
+    for projection in ("wkv", "wgate"):
+        state[f"layers.0.attn.compressor.{projection}.weight"] = torch.ones(
+            (128, 128), dtype=torch.bfloat16
+        )
+    shard = "model-00001-of-00001.safetensors"
+    save_file(state, str(path / shard))
+    with (path / "model.safetensors.index.json").open("w") as f:
+        json.dump(
+            {
+                "metadata": {
+                    "total_size": sum(
+                        tensor.numel() * tensor.element_size()
+                        for tensor in state.values()
+                    )
+                },
+                "weight_map": {name: shard for name in state},
+            },
+            f,
+        )
+    with (path / "config.json").open("w") as f:
+        json.dump(
+            {
+                "architectures": ["DeepseekV4ForCausalLM"],
+                "model_type": "deepseek_v4",
+                "torch_dtype": "bfloat16",
+                "expert_dtype": "fp4",
+                "quantization_config": {
+                    "quant_method": "fp8",
+                    "weight_block_size": [128, 128],
+                },
+            },
+            f,
+        )
+
+
 def test_quantize_moe_end_to_end(tmp_path):
     source = tmp_path / "source"
     output = tmp_path / "quantized"
@@ -95,6 +154,154 @@ def test_quantize_moe_end_to_end(tmp_path):
         rescanned.tensors[routed_packed].storage_format
         == "compressed-tensors-pack-quantized-int4"
     )
+
+
+def test_deepseek_v4_per_selector_quantization_end_to_end(tmp_path):
+    source = tmp_path / "deepseek-v4-source"
+    output = tmp_path / "deepseek-v4-per-selector"
+    _make_deepseek_v4_mixed_checkpoint(source)
+
+    main(
+        [
+            "quantize",
+            "--input",
+            str(source),
+            "--output",
+            str(output),
+            "--select",
+            "moe=int4",
+            "activation-bits=16",
+            "strategy=group",
+            "group-size=32",
+            "--select",
+            "attention=int8",
+            "activation-bits=8",
+            "strategy=channel",
+            "--select-name",
+            r"^mtp\.=int8",
+            "activation-bits=16",
+            "strategy=group",
+            "group-size=64",
+            "--n-candidates",
+            "8",
+            "--backend",
+            "cpu",
+        ]
+    )
+
+    validation = validate_artifact(output)
+    assert validation["valid"], validation["errors"]
+    assert validation["int4_tensors"] == 6
+    assert validation["int8_tensors"] == 7
+
+    config = json.loads((output / "config.json").read_text())
+    assert "expert_dtype" not in config
+    quant_config = config["quantization_config"]
+    assert quant_config["format"] == "mixed-precision"
+    assert set(quant_config["config_groups"]) == {
+        "w4a16_g32",
+        "w8a16_g64",
+        "w8a8_channel_token",
+    }
+    int4_targets = quant_config["config_groups"]["w4a16_g32"]["targets"]
+    int8_targets = quant_config["config_groups"]["w8a8_channel_token"]["targets"]
+    assert quant_config["config_groups"]["w4a16_g32"]["format"] == "pack-quantized"
+    assert quant_config["config_groups"]["w8a16_g64"]["format"] == "pack-quantized"
+    assert (
+        quant_config["config_groups"]["w8a8_channel_token"]["format"]
+        == "int-quantized"
+    )
+    assert (
+        r"re:^.*layers\.0\.ffn\.experts\.\d+\."
+        r"(?:gate_proj|up_proj|down_proj|w1|w2|w3)$"
+    ) in int4_targets
+    assert "layers.0.attn.fused_wqa_wkv" in int8_targets
+    assert "layers.0.ffn.shared_experts.gate_up_proj" in int4_targets
+    assert "layers.0.ffn.shared_experts.down_proj" in int4_targets
+    manifest = json.loads((output / "quantization_manifest.json").read_text())
+    assert manifest["algorithm"]["mode"] == "per_selector"
+    assert manifest["artifact"]["num_bits"] == [4, 8]
+    assert manifest["artifact"]["compression_format"] == "mixed-precision"
+    assert manifest["artifact"]["compression_formats"] == [
+        "int-quantized",
+        "pack-quantized",
+    ]
+    assert manifest["artifact"]["weight_encoding"] == "mixed"
+    assert {
+        (scheme["scheme"], scheme["compression_format"])
+        for scheme in manifest["artifact"]["schemes"]
+    } == {
+        ("int4-a16", "pack-quantized"),
+        ("int8-a16", "pack-quantized"),
+        ("int8-a8", "int-quantized"),
+    }
+
+    shard = load_file(output / "model-00001-of-00001.safetensors")
+    assert "layers.0.ffn.experts.0.w1.weight_packed" in shard
+    assert shard["layers.0.attn.wq_a.weight"].dtype == torch.int8
+    assert shard["layers.0.attn.wo_a.weight"].dtype == torch.int8
+    assert "layers.0.attn.wo_a.weight_packed" not in shard
+    assert "layers.0.attn.wo_a.scale" not in shard
+    assert shard["layers.0.attn.wo_b.weight"].dtype == torch.int8
+    assert "mtp.0.e_proj.weight_packed" in shard
+    assert shard["layers.0.attn.compressor.wkv.weight"].dtype == torch.bfloat16
+    assert shard["layers.0.attn.compressor.wgate.weight"].dtype == torch.bfloat16
+
+
+def test_per_selector_w8a16_group_and_channel_end_to_end(tmp_path):
+    source = tmp_path / "deepseek-v4-source"
+    output = tmp_path / "deepseek-v4-w8a16-granularity"
+    _make_deepseek_v4_mixed_checkpoint(source)
+
+    main(
+        [
+            "quantize",
+            "--input",
+            str(source),
+            "--output",
+            str(output),
+            "--select",
+            "moe=int8",
+            "activation-bits=16",
+            "strategy=group",
+            "group-size=32",
+            "--select",
+            "attention=int8",
+            "activation-bits=16",
+            "strategy=channel",
+            "--n-candidates",
+            "8",
+            "--backend",
+            "cpu",
+        ]
+    )
+
+    validation = validate_artifact(output)
+    assert validation["valid"], validation["errors"]
+    config = json.loads((output / "config.json").read_text())
+    quant_config = config["quantization_config"]
+    assert quant_config["format"] == "pack-quantized"
+    assert set(quant_config["config_groups"]) == {
+        "w8a16_g32",
+        "w8a16_channel",
+    }
+    assert (
+        quant_config["config_groups"]["w8a16_g32"]["weights"]["strategy"]
+        == "group"
+    )
+    assert (
+        quant_config["config_groups"]["w8a16_channel"]["weights"]["strategy"]
+        == "channel"
+    )
+    manifest = json.loads((output / "quantization_manifest.json").read_text())
+    assert manifest["artifact"]["strategy"] == "mixed"
+    assert {
+        (scheme["scheme"], scheme["strategy"], scheme["group_size"])
+        for scheme in manifest["artifact"]["schemes"]
+    } == {
+        ("int8-a16", "group", 32),
+        ("int8-a16", "channel", None),
+    }
 
 
 def test_convert_to_bf16_end_to_end(tmp_path):

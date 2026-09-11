@@ -1,0 +1,12 @@
+version: 1
+select:
+  - target: moe
+    weight_format: int4
+    activation_bits: 16
+    strategy: group
+    group_size: 32
+  - target: attention
+    weight_format: int8
+    activation_bits: 8
+    strategy: channel
+    scale_dtype: fp32

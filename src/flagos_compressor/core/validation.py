@@ -55,6 +55,7 @@ def validate_artifact(model_path: str | Path) -> dict:
     int4_tensors = 0
     int8_tensors = 0
     observed_quant_bits: set[int] = set()
+    observed_compression_formats: set[str] = set()
     observed_strategies: set[str] = set()
     observed_scale_dtypes: set[str] = set()
     native_method: str | None = None
@@ -100,6 +101,11 @@ def validate_artifact(model_path: str | Path) -> dict:
                     errors.append(f"Invalid scale dtype for {name}: {exc}")
                     expected_scale_dtype = torch.float32
             observed_quant_bits.add(num_bits)
+            observed_compression_formats.add(
+                "int-quantized"
+                if tensor_format == "compressed-tensors-int-quantized-int8"
+                else "pack-quantized"
+            )
             observed_strategies.add(spec.get("strategy", "group"))
             if spec.get("num_bits", num_bits) != num_bits:
                 errors.append(
@@ -158,41 +164,106 @@ def validate_artifact(model_path: str | Path) -> dict:
 
         config_path = path / "config.json"
         artifact = manifest.get("artifact") or {}
-        if len(observed_quant_bits) == 1:
-            manifest_bits = next(iter(observed_quant_bits))
-            expected_encoding = (
-                "int8"
-                if artifact.get("compression_format") == "int-quantized"
-                else ("uint4b8" if manifest_bits == 4 else "uint8b128")
-            )
-            if (
-                "num_bits" in artifact
-                and artifact.get("num_bits") != manifest_bits
-            ):
+        if observed_quant_bits:
+            sorted_bits = sorted(observed_quant_bits)
+            mixed_bits = len(sorted_bits) > 1
+            mixed_storage = len(observed_compression_formats) > 1
+            expected_bits = sorted_bits if mixed_bits else sorted_bits[0]
+            if artifact.get("num_bits") != expected_bits:
                 errors.append("Manifest artifact bit width is inconsistent")
-            if artifact.get("weight_encoding") != expected_encoding:
-                errors.append("Manifest artifact weight encoding is inconsistent")
-        if (
-            len(observed_strategies) == 1
-            and "strategy" in artifact
-            and artifact.get("strategy") != next(iter(observed_strategies))
-        ):
-            errors.append("Manifest artifact weight strategy is inconsistent")
-        if "scale_dtype" in artifact:
-            try:
-                artifact_scale_dtype = dtype_name(
-                    parse_w8a8_scale_dtype(artifact["scale_dtype"])
+            expected_compression_format = (
+                "mixed-precision"
+                if mixed_storage
+                else next(iter(observed_compression_formats))
+            )
+            if artifact.get("compression_format") != expected_compression_format:
+                errors.append(
+                    "Manifest artifact compression format is inconsistent"
                 )
-            except (TypeError, ValueError) as exc:
-                errors.append(f"Invalid artifact scale dtype: {exc}")
-            else:
-                if (
-                    len(observed_scale_dtypes) == 1
-                    and artifact_scale_dtype != next(iter(observed_scale_dtypes))
+            if mixed_storage:
+                if artifact.get("weight_encoding") != "mixed":
+                    errors.append(
+                        "Manifest mixed-precision weight encoding is inconsistent"
+                    )
+                if artifact.get("compression_formats") != sorted(
+                    observed_compression_formats
                 ):
                     errors.append(
-                        "Manifest artifact scale dtype is inconsistent"
+                        "Manifest mixed-precision format list is inconsistent"
                     )
+                if not artifact.get("schemes"):
+                    errors.append(
+                        "Manifest mixed-precision artifact is missing schemes"
+                    )
+            elif mixed_bits:
+                expected_encodings = {
+                    str(bits): "uint4b8" if bits == 4 else "uint8b128"
+                    for bits in sorted_bits
+                }
+                if artifact.get("weight_encoding") != "mixed":
+                    errors.append(
+                        "Manifest mixed-bit weight encoding is inconsistent"
+                    )
+                if artifact.get("weight_encodings") != expected_encodings:
+                    errors.append(
+                        "Manifest mixed-bit encoding map is inconsistent"
+                    )
+                expected_values_per_word = {
+                    str(bits): 32 // bits for bits in sorted_bits
+                }
+                if artifact.get("values_per_word") != expected_values_per_word:
+                    errors.append(
+                        "Manifest mixed-bit packing factors are inconsistent"
+                    )
+            else:
+                manifest_bits = sorted_bits[0]
+                expected_encoding = (
+                    "int8"
+                    if artifact.get("compression_format") == "int-quantized"
+                    else ("uint4b8" if manifest_bits == 4 else "uint8b128")
+                )
+                if artifact.get("weight_encoding") != expected_encoding:
+                    errors.append(
+                        "Manifest artifact weight encoding is inconsistent"
+                    )
+        if observed_strategies and "strategy" in artifact:
+            expected_strategy = (
+                next(iter(observed_strategies))
+                if len(observed_strategies) == 1
+                else "mixed"
+            )
+            if artifact.get("strategy") != expected_strategy:
+                errors.append(
+                    "Manifest artifact weight strategy is inconsistent"
+                )
+        if "scale_dtype" in artifact:
+            if len(observed_scale_dtypes) > 1:
+                if artifact.get("scale_dtype") != "mixed":
+                    errors.append(
+                        "Manifest artifact scale dtype must be mixed"
+                    )
+                if artifact.get("scale_dtypes") != sorted(
+                    observed_scale_dtypes
+                ):
+                    errors.append(
+                        "Manifest artifact scale dtype list is inconsistent"
+                    )
+            else:
+                try:
+                    artifact_scale_dtype = dtype_name(
+                        parse_w8a8_scale_dtype(artifact["scale_dtype"])
+                    )
+                except (TypeError, ValueError) as exc:
+                    errors.append(f"Invalid artifact scale dtype: {exc}")
+                else:
+                    if (
+                        len(observed_scale_dtypes) == 1
+                        and artifact_scale_dtype
+                        != next(iter(observed_scale_dtypes))
+                    ):
+                        errors.append(
+                            "Manifest artifact scale dtype is inconsistent"
+                        )
         if not config_path.exists():
             errors.append("compressed-tensors artifact is missing config.json")
         else:
@@ -210,8 +281,20 @@ def validate_artifact(model_path: str | Path) -> dict:
                     "the manifest"
                 )
             config_groups = quant_config.get("config_groups") or {}
-            if expected_compression_format == "int-quantized":
-                for group_name, group in config_groups.items():
+            group_formats = {
+                group.get("format", quant_config.get("format"))
+                for group in config_groups.values()
+            }
+            group_formats.discard(None)
+            if (
+                observed_compression_formats
+                and group_formats != observed_compression_formats
+            ):
+                errors.append(
+                    "config.json per-group formats do not match the manifest"
+                )
+            for group_name, group in config_groups.items():
+                if group.get("format") == "int-quantized":
                     input_quant = group.get("input_activations") or {}
                     if input_quant != {
                         "num_bits": 8,
@@ -227,6 +310,7 @@ def validate_artifact(model_path: str | Path) -> dict:
             config_bits = {
                 group.get("weights", {}).get("num_bits")
                 for group in config_groups.values()
+                if group.get("weights", {}).get("type") == "int"
             }
             config_bits.discard(None)
             if observed_quant_bits and config_bits != observed_quant_bits:
@@ -236,6 +320,7 @@ def validate_artifact(model_path: str | Path) -> dict:
             config_strategies = {
                 group.get("weights", {}).get("strategy")
                 for group in config_groups.values()
+                if group.get("weights", {}).get("type") == "int"
             }
             config_strategies.discard(None)
             if (

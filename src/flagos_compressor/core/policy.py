@@ -125,12 +125,126 @@ class UnselectedWeightsPolicy:
             )
 
 
+_TARGET_WEIGHT_FORMAT_BITS = {"int4": 4, "int8": 8}
+
+
+@dataclass(frozen=True)
+class TargetSchemeRule:
+    """One ordered selector with explicit, existing quantization settings."""
+
+    weight_format: str
+    activation_num_bits: int
+    strategy: str
+    selection: str | None = None
+    name_pattern: str | None = None
+    group_size: int | None = None
+    chunk_size: int | None = None
+    scale_dtype: str | None = None
+
+    def __post_init__(self) -> None:
+        if (self.selection is None) == (self.name_pattern is None):
+            raise ValueError(
+                "A per-selector rule requires exactly one selection or name pattern"
+            )
+        if self.selection is not None and self.selection not in BUILTIN_SELECTIONS:
+            raise ValueError(f"Unknown per-selector target: {self.selection}")
+        if self.name_pattern is not None:
+            re.compile(self.name_pattern)
+        normalized_weight_format = self.weight_format.lower()
+        if normalized_weight_format not in _TARGET_WEIGHT_FORMAT_BITS:
+            supported = ", ".join(sorted(_TARGET_WEIGHT_FORMAT_BITS))
+            raise ValueError(
+                f"Unsupported target weight format {self.weight_format!r}; "
+                f"currently supported: {supported}. Weight formats such as "
+                "fp4 and fp8 remain distinct extension points."
+            )
+        object.__setattr__(self, "weight_format", normalized_weight_format)
+        if self.activation_num_bits not in (8, 16):
+            raise ValueError("activation-bits must be 8 or 16")
+        normalized_strategy = self.strategy.lower()
+        if normalized_strategy not in {"group", "channel"}:
+            raise ValueError("strategy must be group or channel")
+        object.__setattr__(self, "strategy", normalized_strategy)
+        if self.activation_num_bits == 8 and (
+            self.num_bits != 8 or self.strategy != "channel"
+        ):
+            raise ValueError(
+                "A8 requires weight-format int8 with strategy channel"
+            )
+        if self.strategy == "channel" and self.num_bits != 8:
+            raise ValueError("channel strategy is currently supported only for INT8")
+        if self.strategy == "group" and self.group_size is None:
+            object.__setattr__(
+                self,
+                "group_size",
+                32 if self.num_bits == 4 else 128,
+            )
+        elif self.strategy == "channel" and self.group_size is not None:
+            raise ValueError("channel strategy does not accept group-size")
+        if self.chunk_size is None:
+            object.__setattr__(
+                self,
+                "chunk_size",
+                4096 if self.num_bits == 4 else 1024,
+            )
+        assert self.chunk_size is not None
+        if self.group_size is not None and self.group_size <= 0:
+            raise ValueError("group-size must be a positive integer")
+        if self.num_bits == 4 and self.group_size is not None and self.group_size % 2:
+            raise ValueError("INT4 group-size must be even")
+        if self.chunk_size <= 0:
+            raise ValueError("chunk-size must be positive")
+        scale_dtype_aliases = {
+            "fp32": "float32",
+            "float32": "float32",
+            "bf16": "bfloat16",
+            "bfloat16": "bfloat16",
+        }
+        if self.is_w8a8:
+            requested_scale_dtype = (self.scale_dtype or "float32").lower()
+            if requested_scale_dtype not in scale_dtype_aliases:
+                raise ValueError(
+                    "INT8-A8 scale_dtype must be fp32, float32, bf16, or bfloat16"
+                )
+            object.__setattr__(
+                self,
+                "scale_dtype",
+                scale_dtype_aliases[requested_scale_dtype],
+            )
+        elif self.scale_dtype is not None:
+            raise ValueError("scale_dtype is supported only for int8-a8")
+
+    @property
+    def num_bits(self) -> int:
+        return _TARGET_WEIGHT_FORMAT_BITS[self.weight_format]
+
+    @property
+    def scheme(self) -> str:
+        """Stable artifact label; granularity is recorded separately."""
+        return f"{self.weight_format}-a{self.activation_num_bits}"
+
+    @property
+    def is_w8a8(self) -> bool:
+        return self.num_bits == 8 and self.activation_num_bits == 8
+
+    @property
+    def label(self) -> str:
+        return self.selection or f"re:{self.name_pattern}"
+
+    def matches_name(self, name: str, tags: tuple[str, ...]) -> bool:
+        if self.selection is not None:
+            return BUILTIN_SELECTIONS[self.selection] in set(tags)
+        assert self.name_pattern is not None
+        return re.search(self.name_pattern, name) is not None
+
+
 @dataclass(frozen=True)
 class QuantizationPolicy:
     selections: tuple[str, ...] = ()
     exclude_selections: tuple[str, ...] = ()
     include_names: tuple[str, ...] = ()
     exclude_names: tuple[str, ...] = ()
+    target_scheme_rules: tuple[TargetSchemeRule, ...] = ()
     method: str = "mse"
     format: str | None = None
     num_bits: int = 4
@@ -171,6 +285,13 @@ class QuantizationPolicy:
             raise ValueError(f"Unknown selections: {', '.join(unknown)}")
         if self.method not in {"mse", "gptq", "awq", "autoround"}:
             raise ValueError("method must be one of: mse, gptq, awq, autoround")
+        if self.target_scheme_rules:
+            if self.method != "mse":
+                raise ValueError("Selector-local rules currently require method='mse'")
+            if self.selections or self.include_names:
+                raise ValueError(
+                    "Selector-local rules cannot be combined with legacy selections"
+                )
         expected_format = {
             "mse": "compressed-tensors",
             "gptq": "gptq",
@@ -251,10 +372,41 @@ class QuantizationPolicy:
     def selects_name(self, name: str, tags: tuple[str, ...]) -> bool:
         """Apply the selector contract to a live Transformers module weight."""
         tags = set(tags)
-        selected = any(BUILTIN_SELECTIONS[item] in tags for item in self.selections)
-        selected = selected or any(re.search(pattern, name) for pattern in self.include_names)
+        if self.target_scheme_rules:
+            selected = any(
+                rule.matches_name(name, tuple(tags))
+                for rule in self.target_scheme_rules
+            )
+        else:
+            selected = any(
+                BUILTIN_SELECTIONS[item] in tags for item in self.selections
+            )
+            selected = selected or any(
+                re.search(pattern, name) for pattern in self.include_names
+            )
         if not selected:
             return False
         if any(BUILTIN_SELECTIONS[item] in tags for item in self.exclude_selections):
             return False
         return not any(re.search(pattern, name) for pattern in self.exclude_names)
+
+    def target_scheme_rule_for(self, tensor: TensorInfo) -> TargetSchemeRule | None:
+        """Return the last matching rule, after applying global exclusions."""
+        if tensor.role != "weight" or not self.target_scheme_rules:
+            return None
+        tags = tuple(tensor.tags)
+        if any(
+            BUILTIN_SELECTIONS[item] in set(tags)
+            for item in self.exclude_selections
+        ):
+            return None
+        if any(re.search(pattern, tensor.name) for pattern in self.exclude_names):
+            return None
+        return next(
+            (
+                rule
+                for rule in reversed(self.target_scheme_rules)
+                if rule.matches_name(tensor.name, tags)
+            ),
+            None,
+        )

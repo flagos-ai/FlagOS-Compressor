@@ -30,6 +30,7 @@ def test_compiles_complete_moe_categories_to_compact_targets():
     )
     assert config["quant_method"] == "compressed-tensors"
     assert config["format"] == "pack-quantized"
+    assert config["config_groups"]["w4a16_g32"]["format"] == "pack-quantized"
     assert (
         config["config_groups"]["w4a16_g32"]["weights"]["group_size"]
         == 32
@@ -71,6 +72,15 @@ def test_rejects_partial_routed_moe_bank():
     }
     with pytest.raises(ValueError, match="partially selected"):
         validate_fusion_closure(weights, selected)
+
+
+def test_rejects_deepseek_v4_compressor_quantization():
+    weights = {
+        "layers.2.attn.compressor.wkv.weight",
+        "layers.2.attn.compressor.wgate.weight",
+    }
+    with pytest.raises(ValueError, match="must remain BF16"):
+        validate_fusion_closure(weights, weights)
 
 
 def test_builds_w8a16_group_config():
@@ -126,6 +136,7 @@ def test_builds_dynamic_token_w8a8_int_quantized_config():
     )
     assert config["format"] == "int-quantized"
     group = config["config_groups"]["w8a8_channel_token"]
+    assert group["format"] == "int-quantized"
     assert group["weights"] == {
         "num_bits": 8,
         "type": "int",
