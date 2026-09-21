@@ -68,6 +68,9 @@ def register():
     from vllm.models.deepseek_v4.common.ops.fused_inv_rope_fp8_quant import (
         fused_inv_rope_fp8_quant,
     )
+    from flagos_compressor.integrations.vllm_bf16_engram import register_bf16_engram
+
+    register_bf16_engram()
 
     if getattr(CompressedTensorsConfig, "_flagos_source_formats", False):
         return

@@ -36,17 +36,22 @@ is the global-attention KV-head count, including SWA layers with more KV heads.
 flagos-compressor quantize \
   --input /path/to/DeepSeek-V4.1-Flash \
   --output /path/to/DeepSeek-V4.1-Flash-W8A8 \
-  --recipe examples/recipes/linear-int8-preserve-indexer.yaml \
+  --recipe examples/recipes/linear-int8-bf16-indexer.yaml \
   --backend cuda
 ```
 
 The same recipe accepts MiMo-V2.5. It selects attention, MoE, MLP, vision/audio
 and MTP projections recognized as linear weights. Indexers, state compressors,
-embeddings, norms, router parameters and output heads are left unchanged.
+embeddings, norms, router parameters and output heads are excluded from INT8.
+The recipe decodes their source FP8/FP4 weights to BF16 and removes the source
+scales. Existing BF16 and FP32 parameters remain unchanged; INT8 weight scales
+remain FP32. Excluding an indexer from INT8 does not require retaining FP8 storage.
 The DeepSeek vision patch projection is Linear and is selected explicitly;
-MiMo's Conv3d patch projection is preserved.
+MiMo's Conv3d patch projection is preserved. Large Engram tables are decoded
+in row chunks so a complete table need not fit in accelerator memory.
 
-`unselected: {strategy: preserve}` copies excluded weights **and their scales**
+The alternative `linear-int8-preserve-indexer.yaml` recipe explicitly sets
+`unselected: {strategy: preserve}` and copies excluded weights **and their scales**
 without conversion or renaming. Preserved quantized modules are recorded in
 `config.json` under `flagos_source_quantization` and in the manifest under
 `preserved_tensors`, together with the original quantization config and block
@@ -64,7 +69,10 @@ weights and scales remain unchanged. Enable it with
 `FLAGOS_COMPRESSOR_VLLM_SOURCE_FORMATS=1` and
 `VLLM_PLUGINS=flagos_source_formats`; this requires a vLLM build containing
 DeepSeek V4.1 support. The adapter does not implement other attention backends
-or multimodal inference.
+or multimodal inference. BF16 Engram exports carry `flagos_bf16_engram: true`;
+the same adapter allocates BF16 tables and gathers them directly, including
+TP-sharded CPU offload. It does not re-quantize the table. DP-shared host storage
+is not supported for BF16 Engram.
 
 The default unselected policy remains BF16 conversion. Use the explicit preserve
 recipe when exclusions must retain their original precision.

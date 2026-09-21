@@ -57,13 +57,14 @@ def classify_weight(name: str) -> tuple[str | None, tuple[str, ...]]:
     leaf = parts[-1]
     tags: set[str] = set()
 
-    # DeepSeek-V4's stateful attention compressor/indexer must remain in its
-    # source floating-point format. In particular, its ``gate_proj`` name is
+    # DeepSeek-V4's stateful attention compressor/indexer is excluded from
+    # integer quantization. In particular, its ``gate_proj`` name is
     # MLP-like but is not an MLP projection and must not match ``linear``.
     if "self_attn" in parts and "compressor" in parts:
         return "attention_compressor", ("attention.compressor",)
 
-    # Sparse index selection is stateful and stays in its source precision.
+    # Sparse index selection is excluded from INT8/INT4. The unselected policy
+    # independently controls BF16 decoding versus source-format preservation.
     if "indexer" in parts:
         return "attention_indexer", ("attention.indexer",)
 

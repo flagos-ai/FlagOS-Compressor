@@ -12,6 +12,7 @@ from flagos_compressor.core.moe_layout import ExpertProjection, layout_by_name
 from flagos_compressor.core.plan import ExecutionPlan, TensorAction
 from flagos_compressor.core.report import ConversionReport
 from flagos_compressor.formats.base import get_weight_format
+from flagos_compressor.formats.bf16_chunks import dequantize_bf16_cpu
 from flagos_compressor.formats.compressed_tensors import (
     compressed_tensor_names,
     int_quantized_tensor_names,
@@ -102,6 +103,7 @@ def _patch_bf16_config(output_path: Path) -> None:
     with config_path.open("r", encoding="utf-8") as f:
         config = json.load(f)
 
+    config.pop("flagos_source_quantization", None)
     config["torch_dtype"] = "bfloat16"
     for key in _STRIP_CONFIG_KEYS:
         config.pop(key, None)
@@ -322,6 +324,14 @@ def _patch_compressed_tensors_config(
                                  "storage_params": t.storage_params} for t in preserved},
         }
 
+    else:
+        config.pop("flagos_source_quantization", None)
+    if any(
+        a.output_format.name == "bf16"
+        and a.tensor.name.endswith(".engram.embed.weight")
+        for a in plan.actions
+    ):
+        config["flagos_bf16_engram"] = True
     config["torch_dtype"] = "bfloat16"
     for key in (*_STRIP_CONFIG_KEYS, "expert_dtype"):
         config.pop(key, None)
@@ -700,13 +710,20 @@ def execute_plan(
 
             scale = get_tensor(action.tensor.scale_name) if action.tensor.scale_name else None
             input_format = get_weight_format(action.input_format.name)
-            canonical_weight = input_format.to_canonical(
-                tensor,
-                scale,
-                backend,
-                context,
-                action.input_format.params,
-            )
+            if (
+                action.output_format.name == "bf16"
+                and action.input_format.name in {"fp8_block_e8m0", "fp4_e2m1_e8m0"}
+                and tensor.numel() > 16 * 1024 * 1024
+                and not action.input_format.params.get("qkv_groups")
+            ):
+                canonical_weight = dequantize_bf16_cpu(
+                    tensor, scale, input_format, backend, context,
+                    action.input_format.params,
+                )
+            else:
+                canonical_weight = input_format.to_canonical(
+                    tensor, scale, backend, context, action.input_format.params,
+                )
             output_format = get_weight_format(action.output_format.name)
             result = output_format.from_canonical(
                 tensor_name,

@@ -136,7 +136,8 @@ def test_mimo_swa_uses_checkpoint_tp_not_its_own_kv_head_count():
     assert params["qkv_group_sizes"] == [3072, 384, 256]
 
 
-def test_preserve_indexer_and_engram_through_export_and_rescan(tmp_path, monkeypatch):
+@pytest.mark.parametrize("preserve", [False, True])
+def test_indexer_and_engram_export_policy(tmp_path, monkeypatch, preserve):
     source, output = tmp_path / "source", tmp_path / "output"
     source.mkdir()
     linear = "layers.0.attn.wo_b.weight"
@@ -150,6 +151,7 @@ def test_preserve_indexer_and_engram_through_export_and_rescan(tmp_path, monkeyp
         embedding: torch.ones(3, 64).to(torch.float8_e4m3fn),
         embedding.replace(".weight", ".scale"): torch.full((3, 2), 4.0),
         "norm.weight": torch.ones(64, dtype=torch.bfloat16),
+        "router.bias": torch.tensor([1.234567], dtype=torch.float32),
     }
     save_file(state, source / "model.safetensors")
     source_config = {
@@ -181,13 +183,39 @@ def test_preserve_indexer_and_engram_through_export_and_rescan(tmp_path, monkeyp
         activation_num_bits=8,
         strategy="channel",
         n_candidates=8,
-        unselected=UnselectedWeightsPolicy("preserve", None),
+        unselected=(
+            UnselectedWeightsPolicy("preserve", None)
+            if preserve
+            else UnselectedWeightsPolicy()
+        ),
     )
     plan = build_quantize_plan(profile, policy)
-    assert [a.tensor.name for a in plan.actions] == [linear]
+    assert {a.tensor.name for a in plan.actions} == (
+        {linear} if preserve else {linear, indexer, embedding}
+    )
     execute_plan(source, output, plan, build_backend("cpu"))
     result = load_file(output / "model.safetensors")
     assert result[linear].dtype == torch.int8
+    if not preserve:
+        assert result[indexer].dtype == result[embedding].dtype == torch.bfloat16
+        torch.testing.assert_close(
+            result[indexer], torch.full((64, 64), 6.0, dtype=torch.bfloat16)
+        )
+        torch.testing.assert_close(
+            result[embedding], torch.full((3, 64), 4.0, dtype=torch.bfloat16)
+        )
+        assert indexer.replace(".weight", ".scale") not in result
+        assert embedding.replace(".weight", ".scale") not in result
+        assert torch.equal(result["router.bias"], state["router.bias"])
+        assert result["router.bias"].dtype == torch.float32
+        assert not any(
+            str(value.dtype).startswith("torch.float8") for value in result.values()
+        )
+        config = json.loads((output / "config.json").read_text())
+        assert "flagos_source_quantization" not in config
+        assert config["flagos_bf16_engram"] is True
+        assert validate_artifact(output)["valid"]
+        return
     for name, tensor in state.items():
         if name.startswith("layers.0.attn.wo_b."):
             continue
