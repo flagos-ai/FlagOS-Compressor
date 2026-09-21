@@ -5,7 +5,7 @@ ATTENTION_LINEAR_NAMES = {
     "q_proj", "k_proj", "v_proj", "o_proj", "out_proj", "query", "key",
     "value", "dense", "c_attn", "c_proj", "qkv_proj", "query_key_value",
     "wq", "wk", "wv", "wo", "wq_a", "wq_b", "wkv", "wkv_a", "wkv_b",
-    "wo_a", "wo_b",
+    "wo_a", "wo_b", "wqkv",
     "kv_a_proj_with_mqa", "kv_b_proj", "q_a_proj", "q_b_proj",
     "kv_proj", "o_b_proj",
     "in_proj_qkv", "in_proj_qkvz", "in_proj_ba", "in_proj_z", "in_proj_b",
@@ -62,6 +62,17 @@ def classify_weight(name: str) -> tuple[str | None, tuple[str, ...]]:
     # MLP-like but is not an MLP projection and must not match ``linear``.
     if "self_attn" in parts and "compressor" in parts:
         return "attention_compressor", ("attention.compressor",)
+
+    # Sparse index selection is stateful and stays in its source precision.
+    if "indexer" in parts:
+        return "attention_indexer", ("attention.indexer",)
+
+    if leaf in {"qkv", "proj"} and any(part in {"attn", "self_attn", "attention"} for part in parts):
+        return "attention_linear", ("attention", "linear")
+    if ((leaf.isdigit() and "mlp" in parts and any(part in {"projection", "merger"} for part in parts))
+            or leaf in {"eh_proj", "main_proj"}
+            or (leaf == "proj" and "confidence_head" in parts)):
+        return "projection_linear", ("linear",)
 
     shared_parts = {"shared_expert", "shared_experts"}
     is_shared = any(part in shared_parts for part in parts)
