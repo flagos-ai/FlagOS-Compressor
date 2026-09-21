@@ -285,6 +285,11 @@ class QuantizationPolicy:
             raise ValueError(f"Unknown selections: {', '.join(unknown)}")
         if self.method not in {"mse", "gptq", "awq", "autoround"}:
             raise ValueError("method must be one of: mse, gptq, awq, autoround")
+        if self.unselected.strategy == "preserve" and self.method != "mse":
+            raise ValueError(
+                "unselected preserve requires the MSE checkpoint workflow; "
+                "calibrated methods materialize source weights as BF16"
+            )
         if self.target_scheme_rules:
             if self.method != "mse":
                 raise ValueError("Selector-local rules currently require method='mse'")
