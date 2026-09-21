@@ -82,26 +82,6 @@ def validate_artifact(model_path: str | Path) -> dict:
         schema = manifest.get("schema")
         if schema != "flagos-compressor.provenance.v1":
             errors.append("Unsupported quantization manifest schema")
-        preserved = manifest.get("preserved_tensors") or {}
-        for name, spec in preserved.items():
-            if name not in tensor_meta:
-                errors.append(f"Preserved source weight is missing: {name}")
-                continue
-            shape, dtype = tensor_meta[name]
-            if list(shape) != spec.get("storage_shape") or dtype_name(dtype) != spec.get("dtype"):
-                errors.append(f"Preserved source weight metadata mismatch: {name}")
-            if spec.get("scale") not in tensor_meta:
-                errors.append(f"Preserved source scale is missing for {name}")
-        if preserved:
-            config_file = path / "config.json"
-            config = json.loads(config_file.read_text()) if config_file.exists() else {}
-            source_contract = config.get("flagos_source_quantization") or {}
-            if source_contract.get("quantization_config") != manifest.get("source_quantization_config"):
-                errors.append("Preserved source quantization config mismatch")
-            if set(source_contract.get("weights") or {}) != set(preserved):
-                errors.append("Preserved source module list mismatch")
-            if not manifest.get("runtime_config", {}).get("requires_source_format_modules"):
-                errors.append("Preserved source modules require an explicit runtime contract")
         for name, spec in manifest.get("tensors", {}).items():
             tensor_format = spec.get("format")
             if name not in tensor_meta:

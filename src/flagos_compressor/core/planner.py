@@ -57,7 +57,7 @@ def _input_format_for(tensor: TensorInfo) -> FormatSpec | None:
     if _is_scaled_fp4(tensor):
         return FormatSpec("fp4_e2m1_e8m0")
     if _is_scaled_fp8(tensor):
-        return FormatSpec("fp8_block_e8m0", tensor.storage_params or {"block_size": 128})
+        return FormatSpec("fp8_block_e8m0", {"block_size": 128})
     if _is_float_weight(tensor):
         return FormatSpec(
             {
@@ -78,16 +78,11 @@ def _plan_unselected_weight(
     tensor: TensorInfo,
     policy: UnselectedWeightsPolicy,
 ) -> None:
-    """Convert to BF16, or preserve with an explicit source-format contract.
+    """Plan one unselected weight using an inference-safe strategy.
 
-    Preserved quantized modules require model-specific runtime support; their
-    original config and layouts are retained by the checkpoint exporter.
+    New strategies belong here only after their checkpoint metadata and
+    runtime loader contract are implemented end to end.
     """
-    if policy.strategy == "preserve" and policy.format is None:
-        plan.kept_tensors.append(tensor)
-        if tensor.element_size == 1 and tensor.scale_name and tensor.storage_format is None:
-            plan.unmatched_quantized_tensors.append(tensor)
-        return
     if policy.strategy != "convert" or policy.format != "bf16":
         requested = (
             policy.strategy
@@ -96,7 +91,8 @@ def _plan_unselected_weight(
         )
         raise ValueError(
             f"Unsupported unselected-weight strategy {requested!r}. "
-            "Use convert:bf16 or preserve with no target format."
+            "Preserving a source format requires a runtime config exporter "
+            "and a compatible inference kernel."
         )
 
     if _is_scaled_fp4(tensor):
@@ -109,7 +105,7 @@ def _plan_unselected_weight(
     elif _is_scaled_fp8(tensor):
         plan.add_action(
             tensor,
-            input_format=_input_format_for(tensor),
+            input_format=FormatSpec("fp8_block_e8m0", {"block_size": 128}),
             output_format=_bf16_output(),
             rule_name="unselected_convert_bf16",
         )
@@ -268,7 +264,7 @@ def build_convert_plan(profile: ModelProfile) -> ExecutionPlan:
         elif _is_scaled_fp8(tensor):
             plan.add_action(
                 tensor,
-                input_format=_input_format_for(tensor),
+                input_format=FormatSpec("fp8_block_e8m0", {"block_size": 128}),
                 output_format=_bf16_output(),
             )
         else:

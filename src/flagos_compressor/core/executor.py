@@ -169,7 +169,7 @@ def _deepseek_v4_runtime_targets(
     """
     text_config = config.get("text_config") or {}
     model_type = config.get("model_type") or text_config.get("model_type")
-    if model_type not in {"deepseek_v4", "deepseek_v41"}:
+    if model_type != "deepseek_v4":
         return set()
 
     modules = {
@@ -189,16 +189,6 @@ def _deepseek_v4_runtime_targets(
                 aliases.add(f"{prefix}.gate_up_proj")
         if module.endswith(".shared_experts.w2"):
             aliases.add(module[: -len(".w2")] + ".down_proj")
-    if model_type == "deepseek_v41":
-        # The V4.1 multimodal wrapper installs its mapper on the instance,
-        # after quantized modules are constructed. Explicit runtime paths
-        # therefore cover both its text-only and multimodal entry points.
-        text_modules = {
-            name for name in modules | aliases
-            if name.startswith(("layers.", "mtp.")) and ".experts." not in name
-        }
-        aliases.update("model." + name for name in text_modules)
-        aliases.update("language_model.model." + name for name in text_modules)
     return aliases
 
 
@@ -307,20 +297,6 @@ def _patch_compressed_tensors_config(
             | set(group_config.get("ignore", ()))
         )
     assert quantization_config is not None
-
-    preserved = [t for t in plan.kept_tensors if t.role == "weight" and t.scale_name]
-    if preserved:
-        source_config = config.get("quantization_config")
-        if not source_config:
-            raise ValueError("Preserving quantized weights requires the source quantization_config")
-        plan.metadata["source_quantization_config"] = source_config
-        # This is a source-format contract for model-specific modules, not a
-        # claim that arbitrary compressed-tensors loaders can consume them.
-        config["flagos_source_quantization"] = {
-            "quantization_config": source_config,
-            "weights": {t.name: {"scale": t.scale_name, "format": t.storage_format,
-                                 "storage_params": t.storage_params} for t in preserved},
-        }
 
     config["torch_dtype"] = "bfloat16"
     for key in (*_STRIP_CONFIG_KEYS, "expert_dtype"):
@@ -474,9 +450,6 @@ def _write_quantization_manifest(
                 "logical_shape": list(tensor.effective_logical_shape),
                 "kept_from_source": True,
             }
-            if tensor.scale_name:
-                tensors[tensor.name].update({"scale": tensor.scale_name,
-                                             "storage_params": tensor.storage_params})
 
     quantized_actions = [
         action
@@ -631,15 +604,6 @@ def _write_quantization_manifest(
         },
         "tensors": tensors,
     }
-    preserved = [t for t in plan.kept_tensors if t.role == "weight" and t.scale_name]
-    if preserved:
-        manifest["source_quantization_config"] = plan.metadata["source_quantization_config"]
-        manifest["preserved_tensors"] = {
-            t.name: {"scale": t.scale_name, "format": t.storage_format,
-                     "storage_params": t.storage_params, "dtype": t.dtype,
-                     "storage_shape": list(t.shape)} for t in preserved
-        }
-        manifest["runtime_config"]["requires_source_format_modules"] = True
     with (output_path / "quantization_manifest.json").open(
         "w", encoding="utf-8"
     ) as f:
