@@ -1,0 +1,498 @@
+﻿# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/reference/formats.md:1
+msgid "Format reference"
+msgstr "格式参考"
+
+#: ../../source/reference/formats.md:3
+msgid ""
+"Use this page to identify checkpoint layouts, quantization schemes, "
+"tensor storage, and shape constraints. The [compatibility "
+"reference](compatibility.md) adds model-family and runtime requirements."
+msgstr "使用此页面识别检查点布局、量化方案、张量存储和形状约束。[兼容性参考](compatibility.md) 补充了模型系列和运行时要求。"
+
+#: ../../source/reference/formats.md:5
+msgid "Input formats"
+msgstr "输入格式"
+
+#: ../../source/reference/formats.md
+msgid "Format"
+msgstr "格式"
+
+#: ../../source/reference/formats.md
+msgid "Processing"
+msgstr "处理"
+
+#: ../../source/reference/formats.md
+msgid "Notes"
+msgstr "备注"
+
+#: ../../source/reference/formats.md
+msgid "BF16 / FP16 / FP32"
+msgstr "BF16 / FP16 / FP32"
+
+#: ../../source/reference/formats.md
+msgid "Direct selection and quantization"
+msgstr "直接 选择 and 量化"
+
+#: ../../source/reference/formats.md
+msgid "Standard float checkpoint weights"
+msgstr "标准 浮点数 检查点 权重"
+
+#: ../../source/reference/formats.md
+msgid "MXFP4 E2M1 + E8M0"
+msgstr "MXFP4 E2M1 + E8M0"
+
+#: ../../source/reference/formats.md
+msgid "Convert to BF16 or quantize through the recognized layout"
+msgstr "Convert to BF16 or quantize through the 已识别的 layout"
+
+#: ../../source/reference/formats.md
+msgid "Scale groups use the supported MXFP4 layout"
+msgstr "缩放 组 use the supported MXFP4 layout"
+
+#: ../../source/reference/formats.md
+msgid "Block FP8 + E8M0"
+msgstr "块 FP8 + E8M0"
+
+#: ../../source/reference/formats.md
+msgid "Only strict 128 × 128 block layout is recognized"
+msgstr "仅 strict 128 × 128 块 layout is 已识别的"
+
+#: ../../source/reference/formats.md
+msgid "Unknown low-precision layout"
+msgstr "未知低精度布局"
+
+#: ../../source/reference/formats.md
+msgid "Refused"
+msgstr "拒绝"
+
+#: ../../source/reference/formats.md
+msgid "The converter does not guess an ABI"
+msgstr "转换器不会猜测 ABI"
+
+#: ../../source/reference/formats.md
+msgid "Existing compressed-tensors artifact"
+msgstr "Existing compressed-tensors 产物"
+
+#: ../../source/reference/formats.md
+msgid "Not recommended for re-quantization"
+msgstr "Not recommended for re-量化"
+
+#: ../../source/reference/formats.md
+msgid "Start from the original source checkpoint"
+msgstr "Start from the 原始 源 检查点"
+
+#: ../../source/reference/formats.md:15
+msgid ""
+"The loader accepts a single `model.safetensors` file or an indexed "
+"sharded checkpoint with `model.safetensors.index.json` and its referenced"
+" shards. PyTorch `.bin` checkpoints are not an accepted input format. The"
+" documented validation workflow primarily covers indexed sharded "
+"checkpoints; single-file input is implemented but should still be checked"
+" in the target code and runtime environment."
+msgstr "The loader accepts a single `model.safetensors` file or an 带索引的 分片的 检查点 with `model.safetensors.index.json` and its referenced 分片。 PyTorch `.bin` 检查点 are not an 接受的 输入 format。 The documented 验证 工作流 primarily covers 带索引的 分片的 检查点； single-file 输入 is implemented but should still be checked in the 目标 代码 and 运行时 环境。"
+
+#: ../../source/reference/formats.md:17
+msgid "A source directory normally contains:"
+msgstr "A 源 目录 normally 包含："
+
+#: ../../source/reference/formats.md:27
+msgid ""
+"For a single-file checkpoint, use `model.safetensors` instead of the "
+"index and shard set. Keep input and output directories separate. For a "
+"formal run, use a new empty output directory so stale shards, indexes, "
+"manifests, or configuration files cannot be mixed with the new result."
+msgstr "For a single-file 检查点， use `model.safetensors` instead of the index and shard set。 Keep 输入 and 输出 目录 单独。 For a 正式 运行， use a new 空 输出 目录 so stale 分片， indexes， manifests， or 配置 files cannot be mixed with the new 结果。"
+
+#: ../../source/reference/formats.md:29
+msgid "MXFP4 recognition"
+msgstr "MXFP4 识别"
+
+#: ../../source/reference/formats.md:31
+msgid ""
+"An MXFP4 weight must be a two-dimensional byte-sized tensor with a "
+"matching scale row count. The layout must satisfy:"
+msgstr "An MXFP4 权重 必须 be a two-dimensional byte-sized tensor with a 匹配的 缩放 行 数量。 The layout 必须 满足："
+
+#: ../../source/reference/formats.md:37
+msgid ""
+"The logical input dimension is twice the packed byte-column count. A byte"
+" tensor with a scale tensor that does not satisfy these relationships is "
+"not accepted as MXFP4 merely because its dtype looks plausible."
+msgstr "The 逻辑 输入 dimension is twice the 打包 byte-列 数量。 A byte tensor with a 缩放 tensor that does not 满足 these relationships is not 接受的 as MXFP4 merely because its 数据类型 looks plausible。"
+
+#: ../../source/reference/formats.md:39
+msgid "Block FP8 recognition"
+msgstr "Block FP8 识别"
+
+#: ../../source/reference/formats.md:41
+msgid ""
+"For a two-dimensional weight with `rows` and `cols`, the E8M0 scale "
+"tensor must contain exactly:"
+msgstr "For a two-dimensional 权重 with `rows` and `cols`， the E8M0 缩放 tensor 必须 contain exactly："
+
+#: ../../source/reference/formats.md:47
+msgid ""
+"This count includes padding tiles. Dtype alone is not sufficient to "
+"classify a tensor as block FP8."
+msgstr "This 数量 includes 填充 tiles。 数据类型 alone is not sufficient to classify a tensor as 块 FP8。"
+
+#: ../../source/reference/formats.md:49
+msgid "Output schemes"
+msgstr "输出方案"
+
+#: ../../source/reference/formats.md
+msgid "Scheme"
+msgstr "方案"
+
+#: ../../source/reference/formats.md
+msgid "Weights"
+msgstr "权重"
+
+#: ../../source/reference/formats.md
+msgid "Activations"
+msgstr "激活值"
+
+#: ../../source/reference/formats.md
+msgid "Strategy"
+msgstr "策略"
+
+#: ../../source/reference/formats.md
+msgid "Default group size"
+msgstr "默认分组大小"
+
+#: ../../source/reference/formats.md
+msgid "BF16"
+msgstr "BF16"
+
+#: ../../source/reference/formats.md
+msgid "None"
+msgstr "None"
+
+#: ../../source/reference/formats.md
+msgid "Not applicable"
+msgstr "Not applicable"
+
+#: ../../source/reference/formats.md
+msgid "W4A16"
+msgstr "W4A16"
+
+#: ../../source/reference/formats.md
+msgid "INT4"
+msgstr "INT4"
+
+#: ../../source/reference/formats.md
+msgid "16-bit"
+msgstr "16-位"
+
+#: ../../source/reference/formats.md
+msgid "Group"
+msgstr "分组"
+
+#: ../../source/reference/formats.md
+msgid "32 for MSE"
+msgstr "32 for MSE"
+
+#: ../../source/reference/formats.md
+msgid "W8A16 group"
+msgstr "W8A16 分组"
+
+#: ../../source/reference/formats.md
+msgid "INT8"
+msgstr "INT8"
+
+#: ../../source/reference/formats.md
+msgid "128 for MSE and calibrated methods"
+msgstr "MSE 和校准方法使用 128"
+
+#: ../../source/reference/formats.md
+msgid "W8A16 channel"
+msgstr "W8A16 通道"
+
+#: ../../source/reference/formats.md
+msgid "Output channel"
+msgstr "输出 channel"
+
+#: ../../source/reference/formats.md
+msgid "Ordinary Linear, attention, and shared-expert weights"
+msgstr "普通 Linear， 注意力， and shared-expert 权重"
+
+#: ../../source/reference/formats.md
+msgid "W8A8"
+msgstr "W8A8"
+
+#: ../../source/reference/formats.md
+msgid "Dynamic per-token INT8"
+msgstr "动态 per-token INT8"
+
+#: ../../source/reference/formats.md:59
+msgid ""
+"Quantization reduces weight-related storage only. KV cache, runtime "
+"workspace, communication buffers, graph capture, and framework overhead "
+"do not shrink proportionally with weight bit width."
+msgstr "量化 reduces 权重-related 存储 仅。 KV cache， 运行时 工作区， communication 缓冲区， graph capture， and 框架 开销 do not shrink proportionally with 权重 位 宽度。"
+
+#: ../../source/reference/formats.md:61
+msgid "compressed-tensors storage"
+msgstr "compressed-tensors 存储"
+
+#: ../../source/reference/formats.md:63
+msgid ""
+"MSE W4A16 and W8A16 use the `compressed-tensors` `pack-quantized` scheme."
+" Packed weights use `torch.int32` storage. The logical weight shape is "
+"recorded separately as an `int64[2]` `<weight>_shape` tensor."
+msgstr "MSE W4A16 and W8A16 use the `compressed-tensors` `pack-quantized` scheme。 打包 权重 use `torch.int32` 存储。 The 逻辑 权重 形状 is 记录 separately as an `int64[2]` `<weight>_shape` tensor。"
+
+#: ../../source/reference/formats.md:65
+msgid ""
+"For INT4, signed values are encoded as unsigned nibble codes by adding "
+"`8`. Each `int32` word stores consecutive input values from low to high "
+"order. The packed input dimension is:"
+msgstr "For INT4， 有符号 值 are 编码 as 无符号 nibble codes by adding `8`。 Each `int32` 字 存储 连续 输入 值 from low to high 顺序。 The 打包 输入 dimension is："
+
+#: ../../source/reference/formats.md:71
+msgid ""
+"The INT4 packed-input constraint also requires `in_features` to be "
+"divisible by `8`."
+msgstr "The INT4 打包-输入 约束 also 需要 `in_features` to be divisible by `8`。"
+
+#: ../../source/reference/formats.md:73
+msgid ""
+"W8A16 uses `int32` uint8b128 packing. Each word contains four byte codes."
+" The physical packed storage may contain more columns than the logical "
+"input dimension when padding is required. Padding uses zero code `128`. "
+"The `<weight>_shape` tensor preserves the logical two-dimensional shape "
+"so the runtime can distinguish physical storage from logical dimensions. "
+"MSE W8A16 scales are stored as BF16."
+msgstr "W8A16 使用 `int32` uint8b128 packing。 Each 字 包含 four byte codes。 The 物理 打包 存储 may contain more columns than the 逻辑 输入 dimension when 填充 is 必需。 填充 使用 zero 代码 `128`。 The `<weight>_shape` tensor preserves the 逻辑 two-dimensional 形状 so the 运行时 can distinguish 物理 存储 from 逻辑 维度。 MSE W8A16 scales are stored as BF16。"
+
+#: ../../source/reference/formats.md:75
+msgid "For group quantization, the scale shape is:"
+msgstr "For 分组 量化， the 缩放 形状 is："
+
+#: ../../source/reference/formats.md:81
+msgid "For channel quantization, the scale shape is:"
+msgstr "For channel 量化， the 缩放 形状 is："
+
+#: ../../source/reference/formats.md:87
+msgid ""
+"MSE W8A8 uses the `compressed-tensors` `int-quantized` scheme. The weight"
+" tensor keeps its logical name and uses raw signed `torch.int8` storage. "
+"Its scale is per output channel with shape `[out_features, 1]` and uses "
+"the selected FP32 or BF16 scale dtype. The activation configuration is "
+"dynamic, symmetric, per-token INT8."
+msgstr "MSE W8A8 使用 the `compressed-tensors` `int-quantized` scheme。 The 权重 tensor keeps its 逻辑 name and 使用 raw 有符号 `torch.int8` 存储。 Its 缩放 is per 输出 channel with 形状 `[out_features， 1]` and 使用 the 选中的 FP32 or BF16 缩放 数据类型。 The 激活 配置 is 动态， 对称， per-token INT8。"
+
+#: ../../source/reference/formats.md:89
+msgid ""
+"The compressed-tensors configuration in `config.json` identifies the "
+"scheme. A generated compressed-tensors artifact also contains the "
+"quantization manifest and execution report described in [output files"
+"](output-files.md). Per-selector mixed W4A16/W8A8 output uses the `mixed-"
+"precision` top-level format with `pack-quantized` and `int-quantized` "
+"groups."
+msgstr "The compressed-tensors 配置 in `config.json` identifies the scheme。 A generated compressed-tensors 产物 also 包含 the 量化 manifest and execution report 描述 in [output files](output-files.md)。 Per-选择器 mixed W4A16/W8A8 输出 使用 the `mixed-precision` top-level format with `pack-quantized` and `int-quantized` 组。"
+
+#: ../../source/reference/formats.md:91
+msgid "Native GPTQ storage"
+msgstr "原生 GPTQ 存储"
+
+#: ../../source/reference/formats.md:93
+msgid "Native GPTQ uses the following tensor ABI:"
+msgstr "原生 GPTQ 使用 the following tensor ABI："
+
+#: ../../source/reference/formats.md
+msgid "Tensor"
+msgstr "张量"
+
+#: ../../source/reference/formats.md
+msgid "Shape or dtype"
+msgstr "形状或数据类型"
+
+#: ../../source/reference/formats.md
+msgid "`qweight`"
+msgstr "`qweight`"
+
+#: ../../source/reference/formats.md
+msgid "`[in_features / pack_factor, out_features]`"
+msgstr "`[in_features / pack_factor, out_features]`"
+
+#: ../../source/reference/formats.md
+msgid "`qzeros`"
+msgstr "`qzeros`"
+
+#: ../../source/reference/formats.md
+msgid "`[groups, out_features / pack_factor]`"
+msgstr "`[groups, out_features / pack_factor]`"
+
+#: ../../source/reference/formats.md
+msgid "`scales`"
+msgstr "`scales`"
+
+#: ../../source/reference/formats.md
+msgid "`[groups, out_features]`"
+msgstr "`[groups, out_features]`"
+
+#: ../../source/reference/formats.md
+msgid "`g_idx`"
+msgstr "`g_idx`"
+
+#: ../../source/reference/formats.md
+msgid "`int32[in_features]`"
+msgstr "`int32[in_features]`"
+
+#: ../../source/reference/formats.md:102
+msgid "The pack factor is:"
+msgstr "The pack 因子 is："
+
+#: ../../source/reference/formats.md:108
+msgid ""
+"The input and output dimensions must satisfy the corresponding pack-"
+"factor divisibility constraints. AutoGPTQ zero codes use:"
+msgstr "The 输入 and 输出 维度 必须 满足 the corresponding pack-因子 divisibility constraints。 AutoGPTQ zero codes use："
+
+#: ../../source/reference/formats.md:114
+msgid ""
+"Native GPTQ and AutoRound remove the original `.weight` tensor and export"
+" the native tensors. AutoRound uses this GPTQ ABI and retains `algorithm:"
+" autoround` provenance in metadata. It does not define a separate "
+"AutoRound storage ABI."
+msgstr "原生 GPTQ and AutoRound 移除 the 原始 `.weight` tensor and 导出 the 原生 tensors。 AutoRound 使用 this GPTQ ABI and retains `algorithm： autoround` 来源 in 元数据。 It does not define a 单独 AutoRound 存储 ABI。"
+
+#: ../../source/reference/formats.md:116
+msgid "Native AWQ GEMM storage"
+msgstr "原生 AWQ GEMM 存储"
+
+#: ../../source/reference/formats.md:118
+msgid "Native AWQ GEMM uses:"
+msgstr "原生 AWQ GEMM 使用："
+
+#: ../../source/reference/formats.md
+msgid "`[in_features, out_features / 8]`"
+msgstr "`[in_features, out_features / 8]`"
+
+#: ../../source/reference/formats.md
+msgid "`[groups, out_features / 8]`"
+msgstr "`[groups, out_features / 8]`"
+
+#: ../../source/reference/formats.md
+msgid "`[groups, out_features]`, normally float16"
+msgstr "`[groups, out_features]`, normally float16"
+
+#: ../../source/reference/formats.md:126
+msgid ""
+"The selected layer's `in_features` must be divisible by the group size, "
+"and `out_features` must be divisible by `8`. AWQ GEMM nibble order is:"
+msgstr "The 选中的 layer's `in_features` 必须 be divisible by the 分组 大小， and `out_features` 必须 be divisible by `8`。 AWQ GEMM nibble 顺序 is："
+
+#: ../../source/reference/formats.md:132
+msgid ""
+"This is not simple consecutive nibble order. Native AWQ exports use "
+"`quant_config.json`. Native GPTQ and AutoRound exports use "
+"`quantize_config.json`."
+msgstr "This is not simple 连续 nibble 顺序。 原生 AWQ exports use `quant_config.json`。 原生 GPTQ and AutoRound exports use `quantize_config.json`。"
+
+#: ../../source/reference/formats.md:134
+msgid "Fused expert naming"
+msgstr "融合专家命名"
+
+#: ../../source/reference/formats.md:136
+msgid ""
+"Fused expert banks may be expanded into loader-facing per-expert names "
+"such as:"
+msgstr "Fused expert banks may be expanded into loader-facing per-expert 名称 such as："
+
+#: ../../source/reference/formats.md:143
+msgid ""
+"Do not infer a fused layout from names alone. Use layout recognition, "
+"shape inference, and dry-run output. A fused `gate_up_proj` must be split"
+" along the model-defined output dimension, and the complete gate, up, and"
+" down bank must remain selected as one inference unit."
+msgstr "Do not infer a fused layout from 名称 alone。 Use layout recognition， 形状 推理， and dry-运行 输出。 A fused `gate_up_proj` 必须 be 划分 along the model-defined 输出 dimension， and the 完整 gate， up， and down bank 必须 remain 选中的 as one 推理 unit。"
+
+#: ../../source/reference/formats.md:145
+msgid "Constraints"
+msgstr "约束"
+
+#: ../../source/reference/formats.md:147
+msgid "INT4 packing"
+msgstr "INT4 打包"
+
+#: ../../source/reference/formats.md:149
+msgid "`in_features` must be divisible by `8` for packed INT4 storage."
+msgstr "`in_features` 必须 be divisible by `8` for 打包 INT4 存储。"
+
+#: ../../source/reference/formats.md:150
+msgid ""
+"Group quantization also requires every selected layer's `in_features` to "
+"be divisible by `group_size`."
+msgstr "分组 量化 also 需要 every 选中的 layer's `in_features` to be divisible by `group_size`。"
+
+#: ../../source/reference/formats.md:152
+msgid "Strategy constraints"
+msgstr "策略约束"
+
+#: ../../source/reference/formats.md:154
+msgid "Channel strategy must omit `group_size`."
+msgstr "Channel 策略 必须 omit `group_size`。"
+
+#: ../../source/reference/formats.md:155
+msgid "Channel strategy is currently valid for INT8 policies only."
+msgstr "Channel 策略 is 当前 valid for INT8 policies 仅。"
+
+#: ../../source/reference/formats.md:156
+msgid ""
+"W8A16 channel quantization is supported for ordinary Linear, attention, "
+"and shared-expert weights, but cannot be used for routed experts."
+msgstr "W8A16 通道 量化 is supported for 普通 Linear， 注意力， and shared-expert 权重， but cannot be used for routed experts。"
+
+#: ../../source/reference/formats.md:157
+msgid "Routed experts can use group strategy for W4A16 or W8A16."
+msgstr "Routed experts can use 分组 策略 for W4A16 or W8A16。"
+
+#: ../../source/reference/formats.md:158
+msgid ""
+"W8A8 channel routed-MoE quantization is allowed when the full W8A8 "
+"parameter combination is used."
+msgstr "W8A8 channel routed-MoE 量化 is allowed when the full W8A8 parameter combination is used。"
+
+#: ../../source/reference/formats.md:160
+msgid "W8A8 fixed parameters"
+msgstr "W8A8 固定参数"
+
+#: ../../source/reference/formats.md:162
+msgid "W8A8 requires exactly:"
+msgstr "W8A8 需要 exactly："
+
+#: ../../source/reference/formats.md:168
+msgid ""
+"Do not pass `--group-size`. W8A8 weights are raw signed INT8 and "
+"activations are dynamic, symmetric, per-token INT8."
+msgstr "Do not pass `--group-size`。 W8A8 权重 are raw 有符号 INT8 and activations are 动态， 对称， per-token INT8。"
+
+#: ../../source/reference/formats.md:171
+msgid ""
+"A structurally valid storage format does not guarantee a runtime kernel. "
+"Check the target loader and hardware independently."
+msgstr "A structurally valid 存储 format does not guarantee a 运行时 kernel。 Check the 目标 loader and 硬件 独立。"
+

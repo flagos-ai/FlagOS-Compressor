@@ -1,0 +1,6 @@
+sphinx==8.2.3
+myst-parser
+sphinx-book-theme~=1.1
+sphinx-design>=0.7.0
+sphinx-copybutton
+sphinxext.opengraph~=0.13.0

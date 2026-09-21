@@ -1,0 +1,323 @@
+﻿# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/how-to/quantize-weights.md:1
+msgid "Quantize weights"
+msgstr "量化权重"
+
+#: ../../source/how-to/quantize-weights.md:3
+msgid ""
+"Quantize selected checkpoint weights when you need W4A16, W8A16, W8A8, "
+"GPTQ, AWQ, or AutoRound artifacts for inference-oriented testing."
+msgstr "当你需要面向推理测试的 W4A16、W8A16、W8A8、GPTQ、AWQ 或 AutoRound 产物时，量化选定的检查点权重。"
+
+#: ../../source/how-to/quantize-weights.md:5
+msgid "Prerequisites"
+msgstr "前置条件"
+
+#: ../../source/how-to/quantize-weights.md:7
+msgid "Before quantization, prepare:"
+msgstr "量化之前，请准备："
+
+#: ../../source/how-to/quantize-weights.md:9
+msgid "a local HuggingFace `safetensors` input directory"
+msgstr "本地 HuggingFace `safetensors` 输入目录"
+
+#: ../../source/how-to/quantize-weights.md:10
+msgid "an empty output directory"
+msgstr "空的输出目录"
+
+#: ../../source/how-to/quantize-weights.md:11
+msgid "enough disk space for generated shards and metadata"
+msgstr "用于生成分片和元数据的足够磁盘空间"
+
+#: ../../source/how-to/quantize-weights.md:12
+msgid ""
+"a selected quantization method, weight bit width, activation bit width, "
+"and output ABI"
+msgstr "选定的量化方法、权重位宽、激活位宽和输出 ABI"
+
+#: ../../source/how-to/quantize-weights.md:13
+msgid ""
+"calibration data if using GPTQ, AWQ, AutoRound, or any workflow that "
+"requires calibration"
+msgstr "如果使用 GPTQ、AWQ、AutoRound，或任何需要校准的工作流，请准备校准数据"
+
+#: ../../source/how-to/quantize-weights.md:15
+msgid "Run `inspect` before choosing selectors:"
+msgstr "选择器之前先运行 `inspect`："
+
+#: ../../source/how-to/quantize-weights.md:21
+msgid "Choose a quantization family"
+msgstr "选择量化系列"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "Family"
+msgstr "系列"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "Typical command options"
+msgstr "典型命令选项"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "Output purpose"
+msgstr "输出用途"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "MSE W4A16"
+msgstr "MSE W4A16"
+
+#: ../../source/how-to/quantize-weights.md
+msgid ""
+"`--method mse --bits 4 --activation-bits 16 --strategy group --group-size"
+" 32`"
+msgstr "`--method mse --bits 4 --activation-bits 16 --strategy group --group-size 32`"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "maximum weight compression candidate"
+msgstr "最大权重压缩候选方案"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "MSE W8A16"
+msgstr "MSE W8A16"
+
+#: ../../source/how-to/quantize-weights.md
+msgid ""
+"`--method mse --bits 8 --activation-bits 16 --strategy group --group-size"
+" 128`"
+msgstr "`--method mse --bits 8 --activation-bits 16 --strategy group --group-size 128`"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "conservative baseline"
+msgstr "保守基线"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "MSE W8A16 channel"
+msgstr "MSE W8A16 通道模式"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "`--method mse --bits 8 --activation-bits 16 --strategy channel`"
+msgstr "`--method mse --bits 8 --activation-bits 16 --strategy channel`"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "ordinary Linear or attention channel-weight test"
+msgstr "普通 Linear 或注意力通道权重测试"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "MSE W8A8"
+msgstr "MSE W8A8"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "`--method mse --bits 8 --activation-bits 8 --strategy channel`"
+msgstr "`--method mse --bits 8 --activation-bits 8 --strategy channel`"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "INT8 weight and dynamic per-token activation testing"
+msgstr "INT8 权重和动态逐 token 激活测试"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "GPTQ"
+msgstr "GPTQ"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "`--method gptq --format gptq` or inferred format"
+msgstr "`--method gptq --format gptq` 或推断出的格式"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "calibrated GPTQ-compatible export"
+msgstr "兼容 GPTQ 的校准导出"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "AWQ"
+msgstr "AWQ"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "`--method awq --format awq` or inferred format"
+msgstr "`--method awq --format awq` 或推断出的格式"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "calibrated AWQ-compatible export"
+msgstr "兼容 AWQ 的校准导出"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "AutoRound"
+msgstr "AutoRound"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "`--method autoround`"
+msgstr "`--method autoround`"
+
+#: ../../source/how-to/quantize-weights.md
+msgid "calibrated AutoRound workflow"
+msgstr "校准 AutoRound 工作流"
+
+#: ../../source/how-to/quantize-weights.md:34
+msgid ""
+"For W8A8, do not pass `--group-size`. Use `--bits 8 --activation-bits 8 "
+"--strategy channel`."
+msgstr "对于 W8A8，不要传入 `--group-size`。请使用 `--bits 8 --activation-bits 8 --strategy channel`。"
+
+#: ../../source/how-to/quantize-weights.md:37
+msgid ""
+"W8A16 channel is also a valid INT8 policy for ordinary Linear and "
+"attention weights. Do not use it for routed MoE weights; use W8A16 group "
+"or the complete W8A8 policy instead. Channel strategies never accept "
+"`--group-size`."
+msgstr "W8A16 通道模式也是普通 Linear 和注意力权重的有效 INT8 策略。不要将其用于路由 MoE 权重；请使用 W8A16 分组模式，或完整的 W8A8 策略。通道策略从不接受 `--group-size`。"
+
+#: ../../source/how-to/quantize-weights.md:39
+msgid "Run a conservative W8A16 dry-run"
+msgstr "运行保守的 W8A16 dry-run"
+
+#: ../../source/how-to/quantize-weights.md:41
+msgid "Use W8A16 group quantization as the first baseline:"
+msgstr "使用 W8A16 分组量化作为第一个基线："
+
+#: ../../source/how-to/quantize-weights.md:57
+msgid "Verify before generation:"
+msgstr "生成之前请验证："
+
+#: ../../source/how-to/quantize-weights.md:59
+msgid "the selected weights match the intended layer groups"
+msgstr "已选权重与预期层组匹配"
+
+#: ../../source/how-to/quantize-weights.md:60
+msgid "no selector is unmatched"
+msgstr "没有选择器未匹配"
+
+#: ../../source/how-to/quantize-weights.md:61
+msgid "each selected layer satisfies the group-size constraint"
+msgstr "每个已选层都满足组大小约束"
+
+#: ../../source/how-to/quantize-weights.md:62
+msgid "fused pairs and routed expert banks are not split"
+msgstr "没有拆分融合对和路由专家权重组"
+
+#: ../../source/how-to/quantize-weights.md:63
+msgid ""
+"the reported output format and quantization scheme match the intended "
+"runtime"
+msgstr "报告的输出格式和量化方案与目标运行时一致"
+
+#: ../../source/how-to/quantize-weights.md:65
+msgid "Generate the W8A16 artifact"
+msgstr "生成 W8A16 产物"
+
+#: ../../source/how-to/quantize-weights.md:67
+msgid "Remove `--dry-run`:"
+msgstr "移除 `--dry-run`："
+
+#: ../../source/how-to/quantize-weights.md:82
+msgid "Generate a W4A16 artifact"
+msgstr "生成 W4A16 产物"
+
+#: ../../source/how-to/quantize-weights.md:84
+msgid "Use W4A16 when you need a maximum compression candidate:"
+msgstr "当你需要最大压缩候选方案时，使用 W4A16："
+
+#: ../../source/how-to/quantize-weights.md:99
+msgid ""
+"Focus regression testing on accuracy-sensitive workloads before treating "
+"a W4A16 artifact as deployable."
+msgstr "在将 W4A16 产物视为可部署之前，应重点对准确率敏感的工作负载进行回归测试。"
+
+#: ../../source/how-to/quantize-weights.md:101
+msgid "Generate a W8A8 artifact"
+msgstr "生成 W8A8 产物"
+
+#: ../../source/how-to/quantize-weights.md:103
+msgid ""
+"Use W8A8 only when the target runtime supports dynamic per-token INT8 "
+"activation handling:"
+msgstr "仅当目标运行时支持动态逐 token INT8 激活处理时，才使用 W8A8："
+
+#: ../../source/how-to/quantize-weights.md:117
+msgid ""
+"For fused routed-expert banks, W8A8 expands loader-facing tensors such as"
+" `experts.<id>.<projection>.weight` and "
+"`experts.<id>.<projection>.weight_scale`."
+msgstr "对于融合的路由专家权重组，W8A8 会展开面向加载器的张量，例如 `experts.<id>.<projection>.weight` 和 `experts.<id>.<projection>.weight_scale`。"
+
+#: ../../source/how-to/quantize-weights.md:121
+msgid ""
+"Do not infer speedup from weight size alone. Runtime kernel support, "
+"graph compilation, KV cache, and framework overhead affect actual memory "
+"and throughput."
+msgstr "不要仅根据权重大小推断加速比。运行时内核支持、图编译、KV cache 和框架开销都会影响实际内存占用和吞吐量。"
+
+#: ../../source/how-to/quantize-weights.md:123
+msgid "Use a recipe"
+msgstr "使用配方"
+
+#: ../../source/how-to/quantize-weights.md:125
+msgid "Move stable quantization settings into YAML when you need reproducibility:"
+msgstr "当你需要可复现性时，将稳定的量化设置移入 YAML："
+
+#: ../../source/how-to/quantize-weights.md:135
+msgid ""
+"CLI values that are explicitly passed override recipe values. Selectors "
+"from the CLI and recipe are merged."
+msgstr "显式传入的 CLI 值会覆盖配方值。来自 CLI 和配方的选择器会合并。"
+
+#: ../../source/how-to/quantize-weights.md:137
+msgid "Validate the output"
+msgstr "验证输出"
+
+#: ../../source/how-to/quantize-weights.md:139
+msgid "Validate every generated artifact:"
+msgstr "验证每个生成的产物："
+
+#: ../../source/how-to/quantize-weights.md:145
+msgid "Expected result:"
+msgstr "预期结果："
+
+#: ../../source/how-to/quantize-weights.md:151
+msgid "Fallbacks"
+msgstr "回退方案"
+
+#: ../../source/how-to/quantize-weights.md:153
+msgid "If quantization fails:"
+msgstr "如果量化失败："
+
+#: ../../source/how-to/quantize-weights.md:155
+msgid "run `inspect` again and confirm selector names"
+msgstr "再次运行 `inspect` 并确认选择器名称"
+
+#: ../../source/how-to/quantize-weights.md:156
+msgid "rerun with `--dry-run` and a new empty output directory"
+msgstr "使用 `--dry-run` 和新的空输出目录重新运行"
+
+#: ../../source/how-to/quantize-weights.md:157
+msgid "reduce selection scope if one layer violates constraints"
+msgstr "如果某一层违反约束，则缩小选择范围"
+
+#: ../../source/how-to/quantize-weights.md:158
+msgid ""
+"adjust `--group-size` only after checking selected layer shapes and "
+"runtime support"
+msgstr "只有检查已选层形状和运行时支持后，才调整 `--group-size`"
+
+#: ../../source/how-to/quantize-weights.md:159
+msgid ""
+"use `--backend cpu` only as a fallback, not as proof that the target "
+"accelerator runtime works"
+msgstr "仅将 `--backend cpu` 作为回退方案，不要以此证明目标加速器运行时可用"
+

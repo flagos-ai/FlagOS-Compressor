@@ -1,0 +1,328 @@
+﻿# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/how-to/handle-model-families.md:1
+msgid "Handle model families"
+msgstr "处理模型家族"
+
+#: ../../source/how-to/handle-model-families.md:3
+msgid ""
+"Use model-family checks to choose safe selectors, quantization schemes, and "
+"validation scope for Dense, MoE, DeepSeek-class, and special checkpoint "
+"layouts."
+msgstr "使用模型家族检查，为 Dense、MoE、DeepSeek 类以及特殊 checkpoint 布局选择安全的选择器、量化方案和验证范围。"
+
+#: ../../source/how-to/handle-model-families.md:5
+msgid "Prerequisites"
+msgstr "前提条件"
+
+#: ../../source/how-to/handle-model-families.md:7
+msgid "Before selecting a family workflow:"
+msgstr "选择家族工作流之前："
+
+#: ../../source/how-to/handle-model-families.md:9
+msgid "run `flagos-compressor inspect --input \"$MODEL\"`"
+msgstr "运行 `flagos-compressor inspect --input \"$MODEL\"`"
+
+#: ../../source/how-to/handle-model-families.md:10
+msgid "save JSON inspection output for large or unfamiliar checkpoints"
+msgstr "为大型或不熟悉的 checkpoint 保存 JSON 检查输出"
+
+#: ../../source/how-to/handle-model-families.md:11
+msgid ""
+"identify whether the model is Dense, standard MoE, fused MoE, DeepSeek-"
+"class, or contains auxiliary modules such as `self_attn.indexer`"
+msgstr "识别模型是 Dense、标准 MoE、融合 MoE、DeepSeek 类，还是包含 `self_attn.indexer` 等辅助模块"
+
+#: ../../source/how-to/handle-model-families.md:12
+msgid "run every command as a dry-run before writing weights"
+msgstr "在写入权重之前将每条命令都作为空运行执行"
+
+#: ../../source/how-to/handle-model-families.md:14
+msgid "Handle Dense models"
+msgstr "处理 Dense 模型"
+
+#: ../../source/how-to/handle-model-families.md:16
+msgid "Use Dense checks for standard attention plus gated MLP architectures."
+msgstr "对标准注意力加门控 MLP 架构使用 Dense 检查。"
+
+#: ../../source/how-to/handle-model-families.md:18
+msgid "Start with the conservative W8A16 group baseline:"
+msgstr "从保守的 W8A16 group 基线开始："
+
+#: ../../source/how-to/handle-model-families.md:32
+msgid "Then test additional schemes only after the baseline is valid:"
+msgstr "仅在基线有效后再测试其他方案："
+
+#: ../../source/how-to/handle-model-families.md
+msgid "Case"
+msgstr "用例"
+
+#: ../../source/how-to/handle-model-families.md
+msgid "Selection"
+msgstr "选择范围"
+
+#: ../../source/how-to/handle-model-families.md
+msgid "Quantization"
+msgstr "量化"
+
+#: ../../source/how-to/handle-model-families.md
+msgid "Purpose"
+msgstr "目的"
+
+#: ../../source/how-to/handle-model-families.md
+msgid "D01"
+msgstr "D01"
+
+#: ../../source/how-to/handle-model-families.md
+msgid "`linear`"
+msgstr "`linear`"
+
+#: ../../source/how-to/handle-model-families.md
+msgid "W8A16 group-128"
+msgstr "W8A16 group-128"
+
+#: ../../source/how-to/handle-model-families.md
+msgid "Conservative baseline"
+msgstr "保守基线"
+
+#: ../../source/how-to/handle-model-families.md
+msgid "D02"
+msgstr "D02"
+
+#: ../../source/how-to/handle-model-families.md
+msgid "W4A16 group-32"
+msgstr "W4A16 group-32"
+
+#: ../../source/how-to/handle-model-families.md
+msgid "High-compression candidate"
+msgstr "高压缩候选方案"
+
+#: ../../source/how-to/handle-model-families.md
+msgid "D03"
+msgstr "D03"
+
+#: ../../source/how-to/handle-model-families.md
+msgid "W8A8 channel/token"
+msgstr "W8A8 通道/token"
+
+#: ../../source/how-to/handle-model-families.md
+msgid "INT8 activation kernel validation"
+msgstr "INT8 激活内核验证"
+
+#: ../../source/how-to/handle-model-families.md
+msgid "D04"
+msgstr "D04"
+
+#: ../../source/how-to/handle-model-families.md
+msgid "`attention`"
+msgstr "`attention`"
+
+#: ../../source/how-to/handle-model-families.md
+msgid "W8A16 channel"
+msgstr "W8A16 channel"
+
+#: ../../source/how-to/handle-model-families.md
+msgid "Attention-only channel-weight test"
+msgstr "仅注意力的通道权重量化测试"
+
+#: ../../source/how-to/handle-model-families.md:41
+msgid ""
+"W8A16 channel is valid for ordinary Dense Linear and attention weights. It "
+"is not valid for routed MoE weights. Dense models should not report routed "
+"expert counts during inspection."
+msgstr ""
+"W8A16 channel 适用于普通 Dense Linear 和注意力权重。它不适用于路由 MoE 权重。Dense "
+"模型在检查时不应报告路由专家数量。"
+
+#: ../../source/how-to/handle-model-families.md:43
+msgid "For D04, omit `--group-size`:"
+msgstr "对于 D04，省略 `--group-size`："
+
+#: ../../source/how-to/handle-model-families.md:57
+msgid "Handle MoE models"
+msgstr "处理 MoE 模型"
+
+#: ../../source/how-to/handle-model-families.md:59
+msgid "Use MoE selectors to keep expert structures intact."
+msgstr "使用 MoE 选择器以保持专家结构完整。"
+
+#: ../../source/how-to/handle-model-families.md:61
+msgid "For routed expert compression:"
+msgstr "对于路由专家压缩："
+
+#: ../../source/how-to/handle-model-families.md:75
+msgid "For routed experts plus attention:"
+msgstr "对于路由专家加注意力："
+
+#: ../../source/how-to/handle-model-families.md:91
+msgid ""
+"Do not use a manual regex to select only part of a fused expert bank. Gate, "
+"up, and down projections in a fused expert module must be selected together."
+" Do not select only part of a routed expert bank."
+msgstr "不要使用手写正则只选择融合专家权重组的一部分。融合专家模块中的 gate、up 和 down 投影必须一起选择。不要只选择路由专家权重组的一部分。"
+
+#: ../../source/how-to/handle-model-families.md:94
+msgid "Handle Qwen3.5 MoE models"
+msgstr "处理 Qwen3.5 MoE 模型"
+
+#: ../../source/how-to/handle-model-families.md:96
+msgid ""
+"The implementation recognizes the Qwen3.5 MoE model types `qwen3_5_moe` and "
+"`qwen3_5_moe_text`, with model classes such as "
+"`Qwen3_5MoeForConditionalGeneration` and `Qwen3_5MoeForCausalLM`."
+msgstr ""
+"该实现可识别 Qwen3.5 MoE 模型类型 `qwen3_5_moe` 和 `qwen3_5_moe_text`，以及 "
+"`Qwen3_5MoeForConditionalGeneration` 和 `Qwen3_5MoeForCausalLM` 等模型类。"
+
+#: ../../source/how-to/handle-model-families.md:98
+msgid "A supported fused expert bank has logical shape:"
+msgstr "受支持的融合专家权重组具有如下逻辑形状："
+
+#: ../../source/how-to/handle-model-families.md:104
+msgid ""
+"`gate_up_proj` is split along the output dimension. Fused W8A8 banks may be "
+"expanded to loader-facing names such as `experts.<id>.<projection>.weight` "
+"and `experts.<id>.<projection>.weight_scale`. Do not infer this layout from "
+"the model name alone. Confirm layout recognition, shape inference, and "
+"complete bank counts in `inspect` and dry-run output. Unknown or "
+"inconsistent fused layouts must be rejected rather than guessed."
+msgstr ""
+"`gate_up_proj` 沿输出维度拆分。融合 W8A8 权重组可能会展开为面向加载器的名称，例如 "
+"`experts.<id>.<projection>.weight` 和 "
+"`experts.<id>.<projection>.weight_scale`。不要仅根据模型名称推断此布局。请在 `inspect` "
+"和空运行输出中确认布局识别、形状推断和完整权重组数量。未知或不一致的融合布局必须被拒绝，而不是猜测。"
+
+#: ../../source/how-to/handle-model-families.md:106
+msgid "Handle DeepSeek-class models"
+msgstr "处理 DeepSeek 类模型"
+
+#: ../../source/how-to/handle-model-families.md:108
+msgid ""
+"DeepSeek-class models may include MLA-style attention names and standard or "
+"fused expert layouts. Recognized projection leaves can include:"
+msgstr "DeepSeek 类模型可能包含 MLA 风格的注意力名称以及标准或融合专家布局。可识别的投影叶节点可能包括："
+
+#: ../../source/how-to/handle-model-families.md:110
+msgid "`wq`, `wk`, `wv`, `wo`"
+msgstr "`wq`, `wk`, `wv`, `wo`"
+
+#: ../../source/how-to/handle-model-families.md:111
+msgid "`q_a_proj`, `q_b_proj`"
+msgstr "`q_a_proj`, `q_b_proj`"
+
+#: ../../source/how-to/handle-model-families.md:112
+msgid "`kv_a_proj_with_mqa`, `kv_b_proj`"
+msgstr "`kv_a_proj_with_mqa`, `kv_b_proj`"
+
+#: ../../source/how-to/handle-model-families.md:113
+msgid "`wq_a`, `wq_b`, `wkv_a`, `wkv_b`"
+msgstr "`wq_a`, `wq_b`, `wkv_a`, `wkv_b`"
+
+#: ../../source/how-to/handle-model-families.md:114
+msgid "`kv_proj`, `o_b_proj`"
+msgstr "`kv_proj`, `o_b_proj`"
+
+#: ../../source/how-to/handle-model-families.md:115
+msgid ""
+"`in_proj_qkv`, `in_proj_qkvz`, `in_proj_ba`, `in_proj_z`, `in_proj_b`, "
+"`in_proj_a`"
+msgstr ""
+"`in_proj_qkv`, `in_proj_qkvz`, `in_proj_ba`, `in_proj_z`, `in_proj_b`, "
+"`in_proj_a`"
+
+#: ../../source/how-to/handle-model-families.md:117
+msgid ""
+"These projection leaves are recognized by the classifier, but model-specific"
+" support is determined by `inspect` and the dry-run plan. Treat those "
+"outputs as authoritative for an unfamiliar DeepSeek variant."
+msgstr "这些投影叶节点会被分类器识别，但模型专用支持由 `inspect` 和空运行计划决定。对于不熟悉的 DeepSeek 变体，请以这些输出为准。"
+
+#: ../../source/how-to/handle-model-families.md:121
+msgid "Use built-in selectors instead of selecting half of an MLA pair:"
+msgstr "使用内置选择器，而不是只选择 MLA 对的一半："
+
+#: ../../source/how-to/handle-model-families.md:136
+msgid ""
+"Two-dimensional routed expert banks may use names such as "
+"`experts.<id>.gate_proj`, `up_proj`, and `down_proj`, or `w1`, `w2`, and "
+"`w3`. The complete gate/up/down set and every selected expert must remain "
+"closed. Fused attention units and fused expert banks must be selected as "
+"complete inference units."
+msgstr ""
+"二维路由专家权重组可能使用 `experts.<id>.gate_proj`、`up_proj` 和 `down_proj`，或 `w1`、`w2` 和"
+" `w3` 等名称。完整的 gate/up/down 集合以及每个被选中的专家都必须保持闭合。融合注意力单元和融合专家权重组必须作为完整推理单元被选择。"
+
+#: ../../source/how-to/handle-model-families.md:138
+msgid ""
+"Some DeepSeek variants include `self_attn.indexer`. A broad attention "
+"selection can be narrowed with:"
+msgstr "某些 DeepSeek 变体包含 `self_attn.indexer`。可以通过以下方式缩小宽泛的注意力选择范围："
+
+#: ../../source/how-to/handle-model-families.md:154
+msgid ""
+"Some DeepSeek-V4 compressor or indexer modules are classified specially and "
+"do not become ordinary linear selections. Always use dry-run output to "
+"verify the actual set."
+msgstr ""
+"某些 DeepSeek-V4 compressor 或 indexer 模块会被特殊分类，不会成为普通 linear "
+"选择。始终使用空运行输出验证实际集合。"
+
+#: ../../source/how-to/handle-model-families.md:156
+msgid "Validate each family case"
+msgstr "验证每个家族用例"
+
+#: ../../source/how-to/handle-model-families.md:158
+msgid "After generation, validate each output:"
+msgstr "生成后，验证每个输出："
+
+#: ../../source/how-to/handle-model-families.md:164
+msgid ""
+"Then load the output in the target runtime and run task-specific accuracy, "
+"memory, and throughput checks."
+msgstr "然后在目标运行时中加载输出，并运行特定任务的准确性、内存和吞吐量检查。"
+
+#: ../../source/how-to/handle-model-families.md:166
+msgid "Fallbacks"
+msgstr "回退处理"
+
+#: ../../source/how-to/handle-model-families.md:168
+msgid "If a model family cannot be recognized safely:"
+msgstr "如果无法安全识别模型家族："
+
+#: ../../source/how-to/handle-model-families.md:170
+msgid "narrow the selection and rerun dry-run"
+msgstr "缩小选择范围并重新运行空运行"
+
+#: ../../source/how-to/handle-model-families.md:171
+msgid "prefer built-in selectors over regex for fused structures"
+msgstr "对于融合结构，优先使用内置选择器而不是正则表达式"
+
+#: ../../source/how-to/handle-model-families.md:172
+msgid "do not force one model's fused MoE layout onto another model"
+msgstr "不要将一个模型的融合 MoE 布局强行套用到另一个模型"
+
+#: ../../source/how-to/handle-model-families.md:173
+msgid ""
+"add and test explicit layout support before processing an unknown fused "
+"expert ABI"
+msgstr "在处理未知融合专家 ABI 之前，先添加并测试显式布局支持"
+

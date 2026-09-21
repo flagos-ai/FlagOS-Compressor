@@ -1,0 +1,203 @@
+﻿# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/reference/selectors.md:1
+msgid "Selector reference"
+msgstr "选择器参考"
+
+#: ../../source/reference/selectors.md:3
+msgid "Layer selector documentation."
+msgstr "层选择器文档。"
+
+#: ../../source/reference/selectors.md:5
+msgid "Built-in selectors"
+msgstr "Built-in selectors"
+
+#: ../../source/reference/selectors.md
+msgid "Selector"
+msgstr "选择器"
+
+#: ../../source/reference/selectors.md
+msgid "Coverage"
+msgstr "覆盖范围"
+
+#: ../../source/reference/selectors.md
+msgid "`linear`"
+msgstr "`linear`"
+
+#: ../../source/reference/selectors.md
+msgid ""
+"All recognized attention, MLP, shared expert, and routed expert linear "
+"layers"
+msgstr "所有已识别的注意力、MLP、共享专家和路由专家线性层"
+
+#: ../../source/reference/selectors.md
+msgid "`attention`"
+msgstr "`attention`"
+
+#: ../../source/reference/selectors.md
+msgid "Q/K/V/O, MLA, and other recognized attention projections"
+msgstr "Q/K/V/O、MLA 和其他已识别的注意力投影"
+
+#: ../../source/reference/selectors.md
+msgid "`mlp`"
+msgstr "`mlp`"
+
+#: ../../source/reference/selectors.md
+msgid "Non-routed-expert MLP linear layers"
+msgstr "非路由专家 MLP 线性层"
+
+#: ../../source/reference/selectors.md
+msgid "`moe`"
+msgstr "`moe`"
+
+#: ../../source/reference/selectors.md
+msgid "Routed experts + shared experts"
+msgstr "路由专家 + 共享专家"
+
+#: ../../source/reference/selectors.md
+msgid "`moe.routed`"
+msgstr "`moe.routed`"
+
+#: ../../source/reference/selectors.md
+msgid "Routed experts only"
+msgstr "仅路由专家"
+
+#: ../../source/reference/selectors.md
+msgid "`moe.shared`"
+msgstr "`moe.shared`"
+
+#: ../../source/reference/selectors.md
+msgid "Shared experts only"
+msgstr "仅共享专家"
+
+#: ../../source/reference/selectors.md:17
+msgid "The `linear` selector does not include embeddings or `lm_head`."
+msgstr "`linear` 选择器不包括嵌入或 `lm_head`。"
+
+#: ../../source/reference/selectors.md:20
+msgid "Selector usage"
+msgstr "选择器用法"
+
+#: ../../source/reference/selectors.md:22
+msgid "Single selector"
+msgstr "单个选择器"
+
+#: ../../source/reference/selectors.md:28
+msgid "Multiple selectors"
+msgstr "多个选择器"
+
+#: ../../source/reference/selectors.md:35
+msgid "Selector exclusion"
+msgstr "选择器排除"
+
+#: ../../source/reference/selectors.md:42
+msgid "Name-based selection"
+msgstr "按名称选择"
+
+#: ../../source/reference/selectors.md:44
+msgid "Select by pattern"
+msgstr "按模式选择"
+
+#: ../../source/reference/selectors.md:50
+msgid "Exclude by pattern"
+msgstr "按模式排除"
+
+#: ../../source/reference/selectors.md:56
+msgid "Selection semantics"
+msgstr "选择语义"
+
+#: ../../source/reference/selectors.md:58
+msgid "Union operation"
+msgstr "并集操作"
+
+#: ../../source/reference/selectors.md:66
+msgid "Subtraction operation"
+msgstr "差集操作"
+
+#: ../../source/reference/selectors.md:74
+msgid "Priority order"
+msgstr "优先顺序"
+
+#: ../../source/reference/selectors.md:76
+msgid "Select by `--select` and `--select-name`"
+msgstr "按 `--select` 和 `--select-name` 选择"
+
+#: ../../source/reference/selectors.md:77
+msgid "Remove by `--exclude` and `--exclude-name`"
+msgstr "移除 by `--exclude` and `--exclude-name`"
+
+#: ../../source/reference/selectors.md:79
+msgid "Pattern examples"
+msgstr "模式示例"
+
+#: ../../source/reference/selectors.md:81
+msgid "Attention projections"
+msgstr "注意力投影"
+
+#: ../../source/reference/selectors.md:95
+msgid "MLP layers"
+msgstr "MLP 层"
+
+#: ../../source/reference/selectors.md:105
+msgid "MoE experts"
+msgstr "MoE 专家"
+
+#: ../../source/reference/selectors.md:115
+msgid "Constraints"
+msgstr "约束"
+
+#: ../../source/reference/selectors.md:117
+msgid "Fused structures"
+msgstr "融合结构"
+
+#: ../../source/reference/selectors.md:119
+msgid "Do not select partial fused pairs."
+msgstr "不要选择部分融合对。"
+
+#: ../../source/reference/selectors.md:120
+msgid "Do not select partial expert banks."
+msgstr "不要选择部分专家库。"
+
+#: ../../source/reference/selectors.md:121
+msgid "Use built-in selectors for fused structures."
+msgstr "对融合结构使用内置选择器。"
+
+#: ../../source/reference/selectors.md:123
+msgid "Dry-run verification"
+msgstr "试运行验证"
+
+#: ../../source/reference/selectors.md:125
+msgid "Always verify with dry-run:"
+msgstr "始终使用试运行进行验证："
+
+#: ../../source/reference/selectors.md:139
+msgid "Verify the following:"
+msgstr "验证以下内容："
+
+#: ../../source/reference/selectors.md:141
+msgid "Match counts are correct."
+msgstr "匹配数量正确。"
+
+#: ../../source/reference/selectors.md:142
+msgid "No `selectors did not match` warnings appear."
+msgstr "没有出现 `selectors did not match` 警告。"
+

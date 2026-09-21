@@ -1,0 +1,157 @@
+﻿# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation 
+"
+"Report-Msgid-Bugs-To: 
+"
+"POT-Creation-Date: 2026-09-20 16:07+0800
+"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE
+"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>
+"
+"Language: zh_CN
+"
+"Language-Team: zh_CN <LL@li.org>
+"
+"Plural-Forms: nplurals=1; plural=0;
+"
+"MIME-Version: 1.0
+"
+"Content-Type: text/plain; charset=utf-8
+"
+"Content-Transfer-Encoding: 8bit
+"
+"Generated-By: Babel 2.17.0
+"
+
+#: ../../source/how-to/index.md:1
+msgid "How-to guides"
+msgstr "操作指南"
+
+#: ../../source/how-to/index.md:3
+msgid ""
+"Use these guides when you already know the outcome you want and need the "
+"commands, checks, and fallback guidance to complete one task."
+msgstr ""
+"当你已经明确想要的结果，并需要命令、检查项和备用指导来完成某项任务时，"
+"请使用这些指南。"
+
+#: ../../source/how-to/index.md:5
+msgid "Guide map"
+msgstr "指南地图"
+
+#: ../../source/how-to/index.md
+msgid "Task"
+msgstr "任务"
+
+#: ../../source/how-to/index.md
+msgid "Start here when you need to"
+msgstr "当你需要执行以下操作时，从这里开始"
+
+#: ../../source/how-to/index.md
+msgid "[Installation guide](install.md)"
+msgstr "[安装指南](install.md)"
+
+#: ../../source/how-to/index.md
+msgid "install the CLI from a local repository checkout"
+msgstr "从本地仓库检出安装 CLI"
+
+#: ../../source/how-to/index.md
+msgid "[FP4 and FP8 conversion](convert-fp4-fp8-to-bf16.md)"
+msgstr "[FP4 和 FP8 转换](convert-fp4-fp8-to-bf16.md)"
+
+#: ../../source/how-to/index.md
+msgid "convert source-quantized FP4 or FP8 checkpoint weights to BF16"
+msgstr "将源量化的 FP4 或 FP8 检查点权重转换为 BF16"
+
+#: ../../source/how-to/index.md
+msgid "[Weight quantization](quantize-weights.md)"
+msgstr "[权重量化](quantize-weights.md)"
+
+#: ../../source/how-to/index.md
+msgid "produce W4A16, W8A16, W8A8, GPTQ, AWQ, or AutoRound artifacts"
+msgstr "生成 W4A16、W8A16、W8A8、GPTQ、AWQ 或 AutoRound 产物"
+
+#: ../../source/how-to/index.md
+msgid "[Per-selector quantization](per-selector-quantization.md)"
+msgstr "[按选择器量化](per-selector-quantization.md)"
+
+#: ../../source/how-to/index.md
+msgid "assign different MSE W4A16, W8A16, and W8A8 schemes in one command"
+msgstr "在一条命令中分配不同的 MSE W4A16、W8A16 和 W8A8 方案"
+
+#: ../../source/how-to/index.md
+msgid "[Layer selection](select-layers.md)"
+msgstr "[层选择](select-layers.md)"
+
+#: ../../source/how-to/index.md
+msgid "control which weights are quantized or excluded"
+msgstr "控制要量化或排除哪些权重"
+
+#: ../../source/how-to/index.md
+msgid "[Model calibration](calibrate-models.md)"
+msgstr "[模型校准](calibrate-models.md)"
+
+#: ../../source/how-to/index.md
+msgid "supply calibration data for calibrated methods"
+msgstr "为需要校准的方法提供校准数据"
+
+#: ../../source/how-to/index.md
+msgid "[Model family handling](handle-model-families.md)"
+msgstr "[模型家族处理](handle-model-families.md)"
+
+#: ../../source/how-to/index.md
+msgid "choose checks for Dense, MoE, DeepSeek, and special layouts"
+msgstr "为 Dense、MoE、DeepSeek 和特殊布局选择检查项"
+
+#: ../../source/how-to/index.md
+msgid "[Recommended test matrix](recommended-test-matrix.md)"
+msgstr "[推荐测试矩阵](recommended-test-matrix.md)"
+
+#: ../../source/how-to/index.md
+msgid "run the complete B00, D, M, S, and indexer case set"
+msgstr "运行完整的 B00、D、M、S 和索引器用例集"
+
+#: ../../source/how-to/index.md
+msgid "[Output validation](validate-outputs.md)"
+msgstr "[输出验证](validate-outputs.md)"
+
+#: ../../source/how-to/index.md
+msgid "validate generated files and prepare runtime loading tests"
+msgstr "验证生成的文件并准备运行时加载测试"
+
+#: ../../source/how-to/index.md
+msgid "[Troubleshooting](troubleshoot.md)"
+msgstr "[故障排除](troubleshoot.md)"
+
+#: ../../source/how-to/index.md
+msgid "recover from input, selection, quantization, backend, and runtime failures"
+msgstr "从输入、选择、量化、后端和运行时故障中恢复"
+
+#: ../../source/how-to/index.md:20
+msgid "Working rule"
+msgstr "工作规则"
+
+#: ../../source/how-to/index.md:22
+msgid ""
+"Run `inspect` and a quantization `--dry-run` before writing large output "
+"directories. Most avoidable failures are easier to diagnose before shards"
+" are written."
+msgstr ""
+"在写入大型输出目录之前，先运行 `inspect` 和量化 `--dry-run`。"
+"大多数可避免的故障在分片写入之前更容易诊断。"
+
+#: ../../source/how-to/index.md:24
+msgid ""
+"If a task fails, switch to the [troubleshooting guide](troubleshoot.md) "
+"rather than guessing at the next step."
+msgstr ""
+"如果任务失败，请转到[故障排除指南](troubleshoot.md)，"
+"而不是猜测下一步操作。"

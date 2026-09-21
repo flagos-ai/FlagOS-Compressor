@@ -1,0 +1,440 @@
+﻿# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/reference/compatibility.md:1
+msgid "Compatibility reference"
+msgstr "兼容性参考"
+
+#: ../../source/reference/compatibility.md:3
+msgid ""
+"Compatibility depends on source checkpoint format, recognized model "
+"structure, quantization policy, output ABI, backend availability, and "
+"runtime loader support. A model name alone does not establish "
+"compatibility."
+msgstr "兼容性取决于源检查点格式、已识别的模型结构、量化策略、输出 ABI、后端可用性以及运行时加载器支持。仅凭模型名称不能确定兼容性。"
+
+#: ../../source/reference/compatibility.md:5
+msgid "Source checkpoint compatibility"
+msgstr "源检查点兼容性"
+
+#: ../../source/reference/compatibility.md:7
+msgid ""
+"The loader supports safetensors checkpoints in either single-file or "
+"indexed-sharded form. It does not accept arbitrary low-precision layouts "
+"or PyTorch `.bin` files. BF16, FP16, and FP32 weights can be selected "
+"directly. Recognized MXFP4 E2M1 with E8M0 scales and strict 128 × 128 "
+"block FP8 with E8M0 scales can be converted to BF16 or processed through "
+"the recognized path. Unknown low-precision layouts are refused. The "
+"documented validation workflow emphasizes indexed sharded checkpoints; "
+"verify single-file behavior in the target code and runtime environment "
+"before relying on it for a release workflow."
+msgstr "The loader 支持 safetensors 检查点 in either single-file or 带索引的-分片的 形式。 It does not accept arbitrary low-precision 布局 or PyTorch `.bin` files。 BF16， FP16， and FP32 权重 can be 选中的 directly。 已识别的 MXFP4 E2M1 with E8M0 scales and strict 128 × 128 块 FP8 with E8M0 scales can be converted to BF16 or processed through the 已识别的 路径。 Unknown low-precision 布局 are 拒绝。 The documented 验证 工作流 emphasizes 带索引的 分片的 检查点； verify single-file behavior in the 目标 代码 and 运行时 环境 before relying on it for a release 工作流。"
+
+#: ../../source/reference/compatibility.md:9
+msgid ""
+"Do not use a generated compressed-tensors artifact as the recommended "
+"source for another quantization run. Start from the original checkpoint "
+"and apply one quantization policy. Keep input and output directories "
+"separate."
+msgstr "Do not use a generated compressed-tensors 产物 as the recommended 源 for another 量化 运行。 Start from the 原始 检查点 and apply one 量化 策略。 Keep 输入 and 输出 目录 单独。"
+
+#: ../../source/reference/compatibility.md:11
+msgid "Model-family compatibility"
+msgstr "模型系列兼容性"
+
+#: ../../source/reference/compatibility.md
+msgid "Family"
+msgstr "系列"
+
+#: ../../source/reference/compatibility.md
+msgid "Supported structures"
+msgstr "支持的结构"
+
+#: ../../source/reference/compatibility.md
+msgid "Selection guidance"
+msgstr "选择指南"
+
+#: ../../source/reference/compatibility.md
+msgid "Dense"
+msgstr "稠密"
+
+#: ../../source/reference/compatibility.md
+msgid "Standard attention, MLP, and linear layers"
+msgstr "标准 注意力， MLP， and linear 层"
+
+#: ../../source/reference/compatibility.md
+msgid "Start with `linear`"
+msgstr "Start with `linear`"
+
+#: ../../source/reference/compatibility.md
+msgid "Standard MoE"
+msgstr "标准 MoE"
+
+#: ../../source/reference/compatibility.md
+msgid "Two-dimensional routed expert banks and shared experts"
+msgstr "二维路由专家库和共享专家"
+
+#: ../../source/reference/compatibility.md
+msgid "Use `moe.routed`, `moe.shared`, or `moe`"
+msgstr "使用 `moe.routed`、`moe.shared` 或 `moe`"
+
+#: ../../source/reference/compatibility.md
+msgid "Fused MoE"
+msgstr "融合 MoE"
+
+#: ../../source/reference/compatibility.md
+msgid ""
+"Recognized three-dimensional expert layouts with complete, consistent "
+"shape pairs"
+msgstr "已识别的 three-dimensional expert 布局 with 完整， consistent 形状 pairs"
+
+#: ../../source/reference/compatibility.md
+msgid "Use built-in MoE selectors and keep each bank complete"
+msgstr "Use built-in MoE selectors and keep each bank 完整"
+
+#: ../../source/reference/compatibility.md
+msgid "Qwen3.5 MoE"
+msgstr "Qwen3.5 MoE"
+
+#: ../../source/reference/compatibility.md
+msgid ""
+"`qwen3_5_moe` and `qwen3_5_moe_text` definitions, including the supported"
+" fused expert layout"
+msgstr "`qwen3_5_moe` 和 `qwen3_5_moe_text` 定义，包括受支持的融合专家布局"
+
+#: ../../source/reference/compatibility.md
+msgid "Confirm layout and counts with inspect and dry-run"
+msgstr "Confirm layout and counts with inspect and dry-运行"
+
+#: ../../source/reference/compatibility.md
+msgid "DeepSeek-class"
+msgstr "DeepSeek 类"
+
+#: ../../source/reference/compatibility.md
+msgid ""
+"MLA-style attention plus MLP or MoE variants, including DeepSeek-V2/V3/V4"
+" calibration structures"
+msgstr "MLA-style 注意力 plus MLP or MoE variants， including DeepSeek-V2/V3/V4 校准 structures"
+
+#: ../../source/reference/compatibility.md
+msgid "Use attention and MoE selectors and verify projection closure"
+msgstr "Use 注意力 and MoE selectors and verify projection closure"
+
+#: ../../source/reference/compatibility.md
+msgid "DSV4 fused attention"
+msgstr "DSV4 融合注意力"
+
+#: ../../source/reference/compatibility.md
+msgid ""
+"Fused attention and shared-expert runtime aliases, including `attn.wo_a` "
+"handling in per-selector mode"
+msgstr "Fused 注意力 and shared-expert 运行时 aliases， including `attn.wo_a` handling in per-选择器 mode"
+
+#: ../../source/reference/compatibility.md
+msgid "Verify the resolved mixed-precision plan and runtime loader mapping"
+msgstr "Verify the resolved mixed-precision 计划 and 运行时 loader mapping"
+
+#: ../../source/reference/compatibility.md
+msgid "GLM-4 MoE"
+msgstr "GLM-4 MoE"
+
+#: ../../source/reference/compatibility.md
+msgid "Architecture-aware calibrated attention and MoE execution"
+msgstr "Architecture-aware calibrated 注意力 and MoE execution"
+
+#: ../../source/reference/compatibility.md
+msgid "Verify Transformers model loading and calibration coverage"
+msgstr "Verify Transformers model 加载 and 校准 coverage"
+
+#: ../../source/reference/compatibility.md
+msgid "Indexer variants"
+msgstr "索引器变体"
+
+#: ../../source/reference/compatibility.md
+msgid ""
+"Auxiliary `self_attn.indexer` weights and, for some variants, compressor "
+"modules"
+msgstr "Auxiliary `self_attn.indexer` 权重 and， for some variants， compressor modules"
+
+#: ../../source/reference/compatibility.md
+msgid "Exclude unintended indexer weights and inspect special modules"
+msgstr "排除 unintended indexer 权重 and inspect special modules"
+
+#: ../../source/reference/compatibility.md:24
+msgid ""
+"Fused Qwen3.5-style expert banks use the logical shape `[num_experts, "
+"out_features, in_features]`. `gate_up_proj` is split along the output "
+"dimension. Other fused three-dimensional banks must not be treated as "
+"Qwen3.5 layouts solely because of a model name. Incomplete or "
+"inconsistent shape pairs are rejected."
+msgstr "Fused Qwen3.5-style expert banks use the 逻辑 形状 `[num_experts， out_features， in_features]`。 `gate_up_proj` is 划分 along the 输出 dimension。 Other fused three-dimensional banks 必须 not be treated as Qwen3.5 布局 solely because of a model name。 Incomplete or inconsistent 形状 pairs are rejected。"
+
+#: ../../source/reference/compatibility.md:26
+msgid "Quantization compatibility"
+msgstr "量化兼容性"
+
+#: ../../source/reference/compatibility.md
+msgid "Scheme"
+msgstr "方案"
+
+#: ../../source/reference/compatibility.md
+msgid "Constraints"
+msgstr "约束"
+
+#: ../../source/reference/compatibility.md
+msgid "Runtime requirement"
+msgstr "运行时要求"
+
+#: ../../source/reference/compatibility.md
+msgid "BF16"
+msgstr "BF16"
+
+#: ../../source/reference/compatibility.md
+msgid "Target loader accepts BF16 or a supported float fallback"
+msgstr "目标 loader accepts BF16 or a supported 浮点数 回退"
+
+#: ../../source/reference/compatibility.md
+msgid "Safetensors and model-definition support"
+msgstr "Safetensors 和模型定义支持"
+
+#: ../../source/reference/compatibility.md
+msgid "W4A16"
+msgstr "W4A16"
+
+#: ../../source/reference/compatibility.md
+msgid "INT4 `in_features` divisible by 8 and by the group size"
+msgstr "INT4 `in_features` divisible by 8 and by the 分组 大小"
+
+#: ../../source/reference/compatibility.md
+msgid "INT4 weight-only kernel or verified fallback"
+msgstr "INT4 权重-仅 kernel or verified 回退"
+
+#: ../../source/reference/compatibility.md
+msgid "W8A16 group"
+msgstr "W8A16 分组"
+
+#: ../../source/reference/compatibility.md
+msgid "Selected `in_features` divisible by the group size"
+msgstr "选中的 `in_features` divisible by the 分组 大小"
+
+#: ../../source/reference/compatibility.md
+msgid "INT8 weight-only kernel or verified fallback"
+msgstr "INT8 权重-仅 kernel or verified 回退"
+
+#: ../../source/reference/compatibility.md
+msgid "W8A16 channel"
+msgstr "W8A16 通道"
+
+#: ../../source/reference/compatibility.md
+msgid ""
+"Channel strategy is INT8 only; ordinary Linear, attention, and shared "
+"experts are supported, routed experts require group strategy"
+msgstr "Channel 策略 is INT8 仅； 普通 Linear， 注意力， and shared experts are supported， routed experts require 分组 策略"
+
+#: ../../source/reference/compatibility.md
+msgid "Channel-wise INT8 weight support"
+msgstr "Channel-wise INT8 权重 support"
+
+#: ../../source/reference/compatibility.md
+msgid "W8A8"
+msgstr "W8A8"
+
+#: ../../source/reference/compatibility.md
+msgid "`bits=8`, `activation_bits=8`, `strategy=channel`, no group size"
+msgstr "`bits=8`， `activation_bits=8`， `strategy=channel`， no 分组 大小"
+
+#: ../../source/reference/compatibility.md
+msgid "Dynamic per-token INT8 activation and weight support"
+msgstr "动态 per-token INT8 激活 and 权重 support"
+
+#: ../../source/reference/compatibility.md
+msgid "GPTQ"
+msgstr "GPTQ"
+
+#: ../../source/reference/compatibility.md
+msgid "Calibrated A16 group quantization and GPTQ ABI"
+msgstr "Calibrated A16 分组 量化 and GPTQ ABI"
+
+#: ../../source/reference/compatibility.md
+msgid "GPTQ loader and matching packed kernels"
+msgstr "GPTQ loader and 匹配的 打包 kernels"
+
+#: ../../source/reference/compatibility.md
+msgid "AWQ"
+msgstr "AWQ"
+
+#: ../../source/reference/compatibility.md
+msgid "Calibrated A16, 4-bit, group quantization with zero points"
+msgstr "Calibrated A16， 4-位， 分组 量化 with zero points"
+
+#: ../../source/reference/compatibility.md
+msgid "AWQ GEMM loader and matching kernels"
+msgstr "AWQ GEMM loader and 匹配的 kernels"
+
+#: ../../source/reference/compatibility.md
+msgid "AutoRound"
+msgstr "AutoRound"
+
+#: ../../source/reference/compatibility.md
+msgid "Calibrated A16 group quantization with symmetric weights and GPTQ ABI"
+msgstr "Calibrated A16 分组 量化 with 对称 权重 and GPTQ ABI"
+
+#: ../../source/reference/compatibility.md
+msgid "GPTQ-compatible loader plus AutoRound provenance handling"
+msgstr "GPTQ-兼容 loader plus AutoRound 来源 handling"
+
+#: ../../source/reference/compatibility.md:39
+msgid ""
+"Method and format are coupled: MSE uses `compressed-tensors`, GPTQ uses "
+"native `gptq`, AWQ uses native `awq`, and AutoRound uses the GPTQ ABI "
+"with AutoRound provenance."
+msgstr "方法 and format are coupled： MSE 使用 `compressed-tensors`， GPTQ 使用 原生 `gptq`， AWQ 使用 原生 `awq`， and AutoRound 使用 the GPTQ ABI with AutoRound 来源。"
+
+#: ../../source/reference/compatibility.md:41
+msgid "Backend compatibility"
+msgstr "后端兼容性"
+
+#: ../../source/reference/compatibility.md:43
+msgid "The CLI accepts backend names exposed by the local PyTorch environment."
+msgstr "The CLI accepts 后端 名称 exposed by the 本地 PyTorch 环境。"
+
+#: ../../source/reference/compatibility.md
+msgid "Backend"
+msgstr "后端"
+
+#: ../../source/reference/compatibility.md
+msgid "Typical use"
+msgstr "典型用途"
+
+#: ../../source/reference/compatibility.md
+msgid "`cpu`"
+msgstr "`cpu`"
+
+#: ../../source/reference/compatibility.md
+msgid "Default execution and functional smoke tests"
+msgstr "默认执行和功能冒烟测试"
+
+#: ../../source/reference/compatibility.md
+msgid "`cuda`"
+msgstr "`cuda`"
+
+#: ../../source/reference/compatibility.md
+msgid "NVIDIA GPU execution"
+msgstr "NVIDIA GPU 执行"
+
+#: ../../source/reference/compatibility.md
+msgid "`npu`"
+msgstr "`npu`"
+
+#: ../../source/reference/compatibility.md
+msgid "PyTorch NPU extension environments"
+msgstr "PyTorch NPU 扩展环境"
+
+#: ../../source/reference/compatibility.md
+msgid "`mlu`"
+msgstr "`mlu`"
+
+#: ../../source/reference/compatibility.md
+msgid "PyTorch MLU extension environments"
+msgstr "PyTorch MLU 扩展环境"
+
+#: ../../source/reference/compatibility.md
+msgid "`musa`"
+msgstr "`musa`"
+
+#: ../../source/reference/compatibility.md
+msgid "PyTorch MUSA extension environments"
+msgstr "PyTorch MUSA 扩展环境"
+
+#: ../../source/reference/compatibility.md:53
+msgid ""
+"CUDA normally resolves the default device to `cuda:0`. Other registered "
+"backend names normally resolve to `<backend>:0` unless `--device` "
+"supplies an explicit identifier. For PPU, DCU, or another vendor "
+"extension, use the actual backend name registered with PyTorch rather "
+"than guessing from the vendor name."
+msgstr "CUDA normally resolves the 默认 设备 to `cuda：0`。 Other 注册的 后端 名称 normally resolve to `<backend>：0` unless `--device` supplies an 显式 标识符。 For PPU， DCU， or another vendor extension， use the actual 后端 name 注册的 with PyTorch rather than guessing from the vendor name。"
+
+#: ../../source/reference/compatibility.md:55
+msgid ""
+"Conversion and non-calibrated MSE quantization may warn and perform "
+"operation-level CPU fallback when the requested accelerator is "
+"unavailable. Calibrated GPTQ, AWQ, and AutoRound execution requires an "
+"available backend and fails rather than silently falling back. Any "
+"fallback is functional evidence only, not evidence of target-device "
+"performance."
+msgstr "转换 and non-calibrated MSE 量化 may warn and perform operation-level CPU 回退 when the requested accelerator is unavailable。 Calibrated GPTQ， AWQ， and AutoRound execution 需要 an available 后端 and fails rather than silently falling back。 Any 回退 is 功能 证据 仅， not 证据 of 目标-设备 性能。"
+
+#: ../../source/reference/compatibility.md:57
+msgid "Runtime compatibility"
+msgstr "运行时兼容性"
+
+#: ../../source/reference/compatibility.md:59
+msgid "A target runtime must support all of the following:"
+msgstr "A 目标 运行时 必须 support all of the following："
+
+#: ../../source/reference/compatibility.md:61
+msgid ""
+"reading the model's `quantization_config` and method-specific metadata "
+"from `config.json`"
+msgstr "reading the model's `quantization_config` and 方法-specific 元数据 from `config.json`"
+
+#: ../../source/reference/compatibility.md:62
+msgid "loading the declared compressed-tensors, GPTQ, AWQ, or AutoRound ABI"
+msgstr "加载 the declared compressed-tensors， GPTQ， AWQ， or AutoRound ABI"
+
+#: ../../source/reference/compatibility.md:63
+msgid "executing the required Linear or MoE kernel path, or a verified fallback"
+msgstr "executing the 必需 Linear or MoE kernel 路径， or a verified 回退"
+
+#: ../../source/reference/compatibility.md:64
+msgid "mapping the exact model architecture and layer names"
+msgstr "mapping the exact model architecture and layer 名称"
+
+#: ../../source/reference/compatibility.md:65
+msgid ""
+"fitting tensor parallelism, KV cache, workspace, communication buffers, "
+"graph capture, and framework overhead into available memory"
+msgstr "fitting tensor parallelism， KV cache， 工作区， communication 缓冲区， graph capture， and 框架 开销 into available 内存"
+
+#: ../../source/reference/compatibility.md:67
+msgid ""
+"`compressed-tensors` describes and stores quantized weights. It does not "
+"provide a kernel for every framework, model, or accelerator. vLLM can "
+"support compressed-tensors for particular combinations, but the exact "
+"vLLM version, model, hardware, and kernel path must be tested."
+msgstr "`compressed-tensors` describes and 存储 quantized 权重。 It does not provide a kernel for every 框架， model， or accelerator。 vLLM can support compressed-tensors for particular combinations， but the exact vLLM version， model， 硬件， and kernel 路径 必须 be tested。"
+
+#: ../../source/reference/compatibility.md:69
+msgid "Portability and evidence boundaries"
+msgstr "可移植性和证据边界"
+
+#: ../../source/reference/compatibility.md:71
+msgid ""
+"Generated artifacts can be copied between platforms, but each target "
+"platform needs independent loading, accuracy, memory, and performance "
+"validation. `validate` proves structural and metadata consistency only. "
+"It does not prove inference loading, accuracy, memory capacity, "
+"throughput, production readiness, or kernel availability. CUDA generation"
+" success and CPU fallback do not establish deployment support on NVIDIA, "
+"PPU, DCU, or another accelerator."
+msgstr "Generated artifacts can be copied between platforms， but each 目标 platform needs independent 加载， 精度， 内存， and 性能 验证。 `validate` proves structural and 元数据 consistency 仅。 It does not prove 推理 加载， 精度， 内存 capacity， 吞吐量， production readiness， or kernel availability。 CUDA generation success and CPU 回退 do not establish deployment support on NVIDIA， PPU， DCU， or another accelerator。"
+

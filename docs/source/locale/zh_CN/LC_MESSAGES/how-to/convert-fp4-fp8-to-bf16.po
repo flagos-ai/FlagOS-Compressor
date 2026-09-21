@@ -1,0 +1,170 @@
+﻿# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:1
+msgid "Convert FP4 and FP8 checkpoints to BF16"
+msgstr "将 FP4 和 FP8 检查点转换为 BF16"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:3
+msgid ""
+"Convert source-quantized checkpoint weights to BF16 when you need a float"
+" baseline or a runtime that does not consume the original FP4 or FP8 "
+"layout."
+msgstr ""
+"当你需要浮点基线，或运行时无法使用原始 FP4 或 FP8 布局时，"
+"请将源量化的检查点权重转换为 BF16。"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:5
+msgid "Prerequisites"
+msgstr "前提条件"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:7
+msgid "Before conversion, prepare:"
+msgstr "转换前，请准备："
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:9
+msgid "a local HuggingFace `safetensors` checkpoint directory"
+msgstr "本地 HuggingFace `safetensors` 检查点目录"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:10
+msgid "`config.json` and `model.safetensors.index.json` in the input directory"
+msgstr "输入目录中的 `config.json` 和 `model.safetensors.index.json`"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:11
+msgid "source weights in recognized MXFP4 or strict 128×128 block FP8 layout"
+msgstr "采用可识别的 MXFP4 或严格 128×128 块 FP8 布局的源权重"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:12
+msgid "a new empty output directory"
+msgstr "新的空输出目录"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:15
+msgid ""
+"Do not use the input directory as the output directory. Conversion writes"
+" a new checkpoint directory and must not mix with source shards."
+msgstr ""
+"不要将输入目录用作输出目录。转换会写入新的检查点目录，"
+"不得与源分片混合。"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:18
+msgid "Inspect the input"
+msgstr "检查输入"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:20
+msgid "Run inspection first:"
+msgstr "先运行检查："
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:26
+msgid ""
+"Confirm that the source contains recognized MXFP4 or block FP8 tensors. "
+"If the input is already BF16, FP16, or FP32, conversion may have nothing "
+"to do."
+msgstr ""
+"确认源包含可识别的 MXFP4 或块 FP8 张量。"
+"如果输入已经是 BF16、FP16 或 FP32，转换可能无事可做。"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:28
+msgid "Run a dry-run"
+msgstr "运行 dry-run"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:30
+msgid "Preview the conversion plan without writing weights:"
+msgstr "在不写入权重的情况下预览转换计划："
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:41
+msgid "Check that:"
+msgstr "检查以下事项："
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:43
+msgid "supported low-precision tensors are recognized"
+msgstr "支持的低精度张量已被识别"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:44
+msgid "output points to a new directory"
+msgstr "输出指向新的目录"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:45
+msgid "the selected backend is available or an intentional fallback is used"
+msgstr "所选后端可用，或已使用有意选择的备用方案"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:47
+msgid "Generate BF16 output"
+msgstr "生成 BF16 输出"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:49
+msgid "Remove `--dry-run` to write the converted checkpoint:"
+msgstr "移除 `--dry-run` 以写入转换后的检查点："
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:59
+msgid "`--to` currently accepts `bf16`."
+msgstr "`--to` 目前接受 `bf16`。"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:61
+msgid "Validate the converted artifact"
+msgstr "验证转换后的产物"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:63
+msgid "Run validation after conversion:"
+msgstr "转换后运行验证："
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:69
+msgid "Expected result:"
+msgstr "预期结果："
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:75
+msgid "Result"
+msgstr "结果"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:77
+msgid ""
+"The output directory contains BF16-compatible checkpoint shards, the "
+"shard index, model configuration, tokenizer files, and conversion "
+"metadata."
+msgstr ""
+"输出目录包含兼容 BF16 的检查点分片、分片索引、模型配置、"
+"分词器文件和转换元数据。"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:79
+msgid "Fallbacks"
+msgstr "备用方案"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:81
+msgid "If conversion reports that no supported FP4 or FP8 tensors were found:"
+msgstr "如果转换报告未找到支持的 FP4 或 FP8 张量："
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:83
+msgid "verify that the input is the intended low-precision source checkpoint"
+msgstr "确认输入是预期的低精度源检查点"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:84
+msgid "use `inspect` output to confirm detected formats"
+msgstr "使用 `inspect` 输出确认检测到的格式"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:85
+msgid ""
+"treat already-float inputs as a float baseline instead of forcing "
+"conversion"
+msgstr ""
+"将已经是浮点格式的输入视为浮点基线，而不是强制转换"
+
+#: ../../source/how-to/convert-fp4-fp8-to-bf16.md:86
+msgid "do not guess unknown low-precision layouts."
+msgstr "不要猜测未知的低精度布局。"

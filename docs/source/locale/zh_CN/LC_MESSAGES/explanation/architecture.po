@@ -1,0 +1,182 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/explanation/architecture.md:1
+msgid "Architecture"
+msgstr "架构"
+
+#: ../../source/explanation/architecture.md:3
+msgid ""
+"FlagOS-Compressor is organized around local checkpoint inspection, "
+"planning, transformation, export, and validation. The architecture is "
+"intentionally bounded. It prepares artifact directories, then leaves "
+"runtime qualification to inference frameworks and hardware-specific "
+"tests."
+msgstr "FlagOS-Compressor 围绕本地 checkpoint 检查、规划、转换、导出和验证组织。其架构有意保持边界清晰。它负责准备构件目录，然后将运行时资格验证交给推理框架和硬件特定测试。"
+
+#: ../../source/explanation/architecture.md:5
+msgid "Main components"
+msgstr "主要组件"
+
+#: ../../source/explanation/architecture.md
+msgid "Component"
+msgstr "组件"
+
+#: ../../source/explanation/architecture.md
+msgid "Responsibility"
+msgstr "职责"
+
+#: ../../source/explanation/architecture.md
+msgid "CLI"
+msgstr "CLI"
+
+#: ../../source/explanation/architecture.md
+msgid "parses `convert`, `quantize`, `inspect`, and `validate` commands"
+msgstr "解析 `convert`、`quantize`、`inspect` 和 `validate` 命令"
+
+#: ../../source/explanation/architecture.md
+msgid "inspection"
+msgstr "检查"
+
+#: ../../source/explanation/architecture.md
+msgid "reads model config, shard index, tensor names, shapes, and source formats"
+msgstr "读取模型配置、分片索引、张量名称、形状和源格式"
+
+#: ../../source/explanation/architecture.md
+msgid "planning"
+msgstr "规划"
+
+#: ../../source/explanation/architecture.md
+msgid "resolves selectors, exclusions, methods, strategies, and output schemes"
+msgstr "解析选择器、排除项、方法、策略和输出方案"
+
+#: ../../source/explanation/architecture.md
+msgid "conversion"
+msgstr "转换"
+
+#: ../../source/explanation/architecture.md
+msgid "converts recognized MXFP4 and block FP8 weights to BF16"
+msgstr "将可识别的 MXFP4 和块 FP8 权重转换为 BF16"
+
+#: ../../source/explanation/architecture.md
+msgid "quantization"
+msgstr "量化"
+
+#: ../../source/explanation/architecture.md
+msgid "applies MSE, GPTQ, AWQ, or AutoRound workflows to selected weights"
+msgstr "将 MSE、GPTQ、AWQ 或 AutoRound 工作流应用到选中的权重"
+
+#: ../../source/explanation/architecture.md
+msgid "export"
+msgstr "导出"
+
+#: ../../source/explanation/architecture.md
+msgid ""
+"writes shards, indices, quantization config, manifests, reports, and "
+"tokenizer files"
+msgstr "写入分片、索引、量化配置、清单、报告和 tokenizer 文件"
+
+#: ../../source/explanation/architecture.md
+msgid "validation"
+msgstr "验证"
+
+#: ../../source/explanation/architecture.md
+msgid "checks generated directory structure and metadata consistency"
+msgstr "检查生成的目录结构和元数据一致性"
+
+#: ../../source/explanation/architecture.md:17
+msgid "Data flow"
+msgstr "数据流"
+
+#: ../../source/explanation/architecture.md:28
+msgid ""
+"The source directory is treated as read-only during normal operation. "
+"Output is written to a separate directory."
+msgstr "正常运行期间源目录按只读处理。输出会写入单独的目录。"
+
+#: ../../source/explanation/architecture.md:30
+msgid "Command responsibilities"
+msgstr "命令职责"
+
+#: ../../source/explanation/architecture.md:32
+msgid "`inspect`"
+msgstr "`inspect`"
+
+#: ../../source/explanation/architecture.md:33
+msgid "Reports supported source formats and selectable weight groups."
+msgstr "报告受支持的源格式和可选择的权重组。"
+
+#: ../../source/explanation/architecture.md:35
+msgid "`convert`"
+msgstr "`convert`"
+
+#: ../../source/explanation/architecture.md:36
+msgid "Converts recognized FP4 or FP8 checkpoint weights to BF16."
+msgstr "将可识别的 FP4 或 FP8 checkpoint 权重转换为 BF16。"
+
+#: ../../source/explanation/architecture.md:38
+msgid "`quantize`"
+msgstr "`quantize`"
+
+#: ../../source/explanation/architecture.md:39
+msgid "Quantizes selected weights and exports the requested ABI."
+msgstr "量化选中的权重并导出请求的 ABI。"
+
+#: ../../source/explanation/architecture.md:41
+msgid "`validate`"
+msgstr "`validate`"
+
+#: ../../source/explanation/architecture.md:42
+msgid "Validates a converted or quantized output directory."
+msgstr "验证已转换或已量化的输出目录。"
+
+#: ../../source/explanation/architecture.md:44
+msgid "Boundary with runtime frameworks"
+msgstr "与运行时框架的边界"
+
+#: ../../source/explanation/architecture.md:46
+msgid ""
+"The architecture does not include inference serving. Runtime frameworks "
+"such as [vLLM](https://docs.vllm.ai/) read the generated artifact after "
+"FlagOS-Compressor has finished."
+msgstr "该架构不包括推理服务。FlagOS-Compressor 完成后，诸如 [vLLM](https://docs.vllm.ai/) 之类的运行时框架会读取生成的构件。"
+
+#: ../../source/explanation/architecture.md:48
+msgid ""
+"That boundary is important because a structurally valid artifact can "
+"still fail runtime loading when:"
+msgstr "这条边界很重要，因为结构有效的构件在以下情况下仍可能无法在运行时加载："
+
+#: ../../source/explanation/architecture.md:50
+msgid "the framework does not support the declared quantization scheme."
+msgstr "框架不支持声明的量化方案。"
+
+#: ../../source/explanation/architecture.md:51
+msgid "the accelerator lacks matching kernels."
+msgstr "加速器缺少匹配的内核。"
+
+#: ../../source/explanation/architecture.md:52
+msgid "tensor parallel settings are invalid."
+msgstr "张量并行设置无效。"
+
+#: ../../source/explanation/architecture.md:53
+msgid "runtime memory overhead exceeds available capacity."
+msgstr "运行时内存开销超过可用容量。"

@@ -1,0 +1,221 @@
+﻿# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/tutorial/index.md:1
+msgid "Complete a first quantization run"
+msgstr "完成第一次量化运行"
+
+#: ../../source/tutorial/index.md:3
+msgid ""
+"This tutorial walks through one complete FlagOS-Compressor path: inspect "
+"a local checkpoint, verify the quantization plan with a dry-run, generate"
+" a W8A16 artifact, and validate the output directory."
+msgstr ""
+"本教程将完整演示 FlagOS-Compressor 的一条流程：检查本地检查点，使用试运行验证量化计划，生成 W8A16 产物，并验证输出目录。"
+
+#: ../../source/tutorial/index.md:5
+msgid "Prerequisites"
+msgstr "前置条件"
+
+#: ../../source/tutorial/index.md:7
+msgid "Before you begin, make sure you have:"
+msgstr "开始前，请确保具备以下条件："
+
+#: ../../source/tutorial/index.md:9
+msgid "Python 3.10 or later"
+msgstr "Python 3.10 或更高版本"
+
+#: ../../source/tutorial/index.md:10
+msgid "PyTorch installed for the backend you plan to use"
+msgstr "已针对计划使用的后端安装 PyTorch"
+
+#: ../../source/tutorial/index.md:11
+msgid ""
+"FlagOS-Compressor installed. See the [installation guide](../how-"
+"to/install.md)"
+msgstr ""
+"已安装 FlagOS-Compressor。请参阅[安装指南](../how-to/install.md)"
+
+#: ../../source/tutorial/index.md:12
+msgid "a local HuggingFace `safetensors` checkpoint directory"
+msgstr "本地 HuggingFace `safetensors` 检查点目录"
+
+#: ../../source/tutorial/index.md:13
+msgid "an empty output location with enough space for generated shards"
+msgstr "具有足够空间用于生成分片的空输出位置"
+
+#: ../../source/tutorial/index.md:15
+msgid "The input checkpoint should include at least:"
+msgstr "输入检查点至少应包含："
+
+#: ../../source/tutorial/index.md:25
+msgid ""
+"Do not write output into the source model directory. Use a new empty "
+"directory for each test so old shards and old configs cannot mix with new"
+" output."
+msgstr ""
+"不要将输出写入源模型目录。每次测试都使用新的空目录，以免旧分片和旧配置与新输出混合。"
+
+#: ../../source/tutorial/index.md:28
+msgid "Set paths"
+msgstr "设置路径"
+
+#: ../../source/tutorial/index.md:30
+msgid "Set environment variables for the source model and output root:"
+msgstr "为源模型和输出根目录设置环境变量："
+
+#: ../../source/tutorial/index.md:37
+msgid "Replace these paths with directories that exist in your environment."
+msgstr "将这些路径替换为环境中实际存在的目录。"
+
+#: ../../source/tutorial/index.md:39
+msgid "Inspect the source checkpoint"
+msgstr "检查源检查点"
+
+#: ../../source/tutorial/index.md:41
+msgid "Run `inspect` before conversion or quantization:"
+msgstr "在转换或量化前运行 `inspect`："
+
+#: ../../source/tutorial/index.md:47
+msgid "Check the inspection result before continuing:"
+msgstr "继续前检查结果："
+
+#: ../../source/tutorial/index.md:49
+msgid "recognized linear layer counts match the model structure"
+msgstr "识别出的线性层数量与模型结构匹配"
+
+#: ../../source/tutorial/index.md:50
+msgid ""
+"source weight formats are recognized as BF16, FP16, FP32, MXFP4, or "
+"supported block FP8"
+msgstr ""
+"源权重格式被识别为 BF16、FP16、FP32、MXFP4 或受支持的块 FP8"
+
+#: ../../source/tutorial/index.md:51
+msgid "Dense models do not show routed expert counts"
+msgstr "稠密模型不显示路由专家数量"
+
+#: ../../source/tutorial/index.md:52
+msgid "MoE models show expected routed or shared expert groups"
+msgstr "MoE 模型显示预期的路由专家组或共享专家组"
+
+#: ../../source/tutorial/index.md:54
+msgid "For a structured record, save JSON output:"
+msgstr "如需结构化记录，请保存 JSON 输出："
+
+#: ../../source/tutorial/index.md:62
+msgid "Run a dry-run"
+msgstr "运行试运行"
+
+#: ../../source/tutorial/index.md:64
+msgid "Run the same quantization command with `--dry-run` first:"
+msgstr "首先为相同的量化命令添加 `--dry-run` 运行："
+
+#: ../../source/tutorial/index.md:78
+msgid "Review the plan before writing weights:"
+msgstr "写入权重前检查计划："
+
+#: ../../source/tutorial/index.md:80
+msgid "selected weight counts match expectations"
+msgstr "选定的权重数量符合预期"
+
+#: ../../source/tutorial/index.md:81
+msgid "W/A bits, strategy, and group size are correct"
+msgstr "W/A 位数、策略和组大小正确"
+
+#: ../../source/tutorial/index.md:82
+msgid "no selector is reported as unmatched"
+msgstr "没有选择器被报告为未匹配"
+
+#: ../../source/tutorial/index.md:83
+msgid "no fused unit or routed expert bank is split"
+msgstr "没有融合单元或路由专家权重库被拆分"
+
+#: ../../source/tutorial/index.md:84
+msgid "`unmatched quantized` is `0` for supported source-quantized inputs"
+msgstr "对于受支持的源量化输入，`unmatched quantized` 为 `0`"
+
+#: ../../source/tutorial/index.md:86
+msgid "If CUDA is not available, use `--backend cpu` for a functional check."
+msgstr "如果 CUDA 不可用，请使用 `--backend cpu` 进行功能检查。"
+
+#: ../../source/tutorial/index.md:88
+msgid "Generate the artifact"
+msgstr "生成产物"
+
+#: ../../source/tutorial/index.md:90
+msgid "Remove `--dry-run` and run the command again:"
+msgstr "移除 `--dry-run` 后再次运行命令："
+
+#: ../../source/tutorial/index.md:103
+msgid "During generation, monitor for:"
+msgstr "生成期间，请关注："
+
+#: ../../source/tutorial/index.md:105
+msgid "unexpected backend fallback"
+msgstr "意外的后端回退"
+
+#: ../../source/tutorial/index.md:106
+msgid "shape or group-size errors"
+msgstr "形状或组大小错误"
+
+#: ../../source/tutorial/index.md:107
+msgid "output file creation failures"
+msgstr "输出文件创建失败"
+
+#: ../../source/tutorial/index.md:109
+msgid "Validate the output"
+msgstr "验证输出"
+
+#: ../../source/tutorial/index.md:111
+msgid "Run validation on the output directory:"
+msgstr "对输出目录运行验证："
+
+#: ../../source/tutorial/index.md:118
+msgid "Expected result:"
+msgstr "预期结果："
+
+#: ../../source/tutorial/index.md:124
+msgid "Save a structured validation report when you need an audit trail:"
+msgstr "需要审计记录时，请保存结构化验证报告："
+
+#: ../../source/tutorial/index.md:132
+msgid "Result"
+msgstr "结果"
+
+#: ../../source/tutorial/index.md:134
+msgid ""
+"You now have a validated W8A16 output directory containing model config, "
+"shard index, weight shards, quantization metadata, report files, and "
+"tokenizer files copied from the source model."
+msgstr ""
+"现在你已有一个通过验证的 W8A16 输出目录，其中包含模型配置、分片索引、权重分片、量化元数据、报告文件，以及从源模型复制的分词器文件。"
+
+#: ../../source/tutorial/index.md:136
+msgid "Next step"
+msgstr "下一步"
+
+#: ../../source/tutorial/index.md:138
+msgid ""
+"Use the [output validation guide](../how-to/validate-outputs.md) to "
+"continue with runtime loading checks and platform-specific validation."
+msgstr ""
+"使用[输出验证指南](../how-to/validate-outputs.md)继续进行运行时加载检查和特定平台的验证。"
