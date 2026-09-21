@@ -1,0 +1,210 @@
+﻿# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/how-to/per-selector-quantization.md:1
+msgid "Use per-selector quantization"
+msgstr "使用按选择器量化"
+
+#: ../../source/how-to/per-selector-quantization.md:3
+msgid ""
+"Per-selector mode assigns a complete weight and activation scheme to each"
+" selected part of one checkpoint. It is useful when, for example, DSV4 "
+"attention should use W8A8 while MoE weights use W4A16 in the same "
+"execution."
+msgstr "按选择器模式为同一检查点的每个选定部分分配完整的权重和激活方案。例如，当 DSV4 注意力在同一次执行中应使用 W8A8，而 MoE 权重应使用 W4A16 时，这种模式非常有用。"
+
+#: ../../source/how-to/per-selector-quantization.md:5
+msgid "Run a mixed quantization command"
+msgstr "运行混合量化命令"
+
+#: ../../source/how-to/per-selector-quantization.md:16
+msgid ""
+"Each selector-local clause starts with `SELECTOR=WEIGHT_FORMAT`. The "
+"supported weight formats are `int4` and `int8`; `fp4` and `fp8` are "
+"reserved extension points."
+msgstr "每个选择器局部子句都以 `SELECTOR=WEIGHT_FORMAT` 开头。支持的权重格式为 `int4` 和 `int8`；`fp4` 和 `fp8` 是预留的扩展点。"
+
+#: ../../source/how-to/per-selector-quantization.md:18
+msgid ""
+"Selector-local settings reuse existing CLI option names without the "
+"leading `--`:"
+msgstr "选择器局部设置复用现有 CLI 选项名称，但不带前导 `--`："
+
+#: ../../source/how-to/per-selector-quantization.md:20
+msgid "`activation-bits`"
+msgstr "`activation-bits`"
+
+#: ../../source/how-to/per-selector-quantization.md:21
+msgid "`strategy`"
+msgstr "`strategy`"
+
+#: ../../source/how-to/per-selector-quantization.md:22
+msgid "`group-size`"
+msgstr "`group-size`"
+
+#: ../../source/how-to/per-selector-quantization.md:23
+msgid "`scale-dtype`"
+msgstr "`scale-dtype`"
+
+#: ../../source/how-to/per-selector-quantization.md:24
+msgid "`chunk-size`"
+msgstr "`chunk-size`"
+
+#: ../../source/how-to/per-selector-quantization.md:26
+msgid ""
+"`activation-bits` and `strategy` are required in every local clause. "
+"Groupwise INT4 and INT8 use default group sizes of 32 and 128 when "
+"`group-size` is omitted. Channel strategy rejects `group-size`."
+msgstr "每个局部子句都必须包含 `activation-bits` 和 `strategy`。如果省略 `group-size`，分组式 INT4 和 INT8 的默认组大小分别为 32 和 128。通道策略不接受 `group-size`。"
+
+#: ../../source/how-to/per-selector-quantization.md:28
+msgid "Choose selectors"
+msgstr "选择选择器"
+
+#: ../../source/how-to/per-selector-quantization.md:30
+msgid "Selectors may be built-in groups:"
+msgstr "选择器可以是内置组："
+
+#: ../../source/how-to/per-selector-quantization.md:32
+msgid "`attention`"
+msgstr "`attention`"
+
+#: ../../source/how-to/per-selector-quantization.md:33
+msgid "`moe`"
+msgstr "`moe`"
+
+#: ../../source/how-to/per-selector-quantization.md:34
+msgid "`moe.routed`"
+msgstr "`moe.routed`"
+
+#: ../../source/how-to/per-selector-quantization.md:35
+msgid "`moe.shared`"
+msgstr "`moe.shared`"
+
+#: ../../source/how-to/per-selector-quantization.md:36
+msgid "`mlp`"
+msgstr "`mlp`"
+
+#: ../../source/how-to/per-selector-quantization.md:37
+msgid "`linear`"
+msgstr "`linear`"
+
+#: ../../source/how-to/per-selector-quantization.md:39
+msgid "Name rules continue to use `--select-name`:"
+msgstr "名称规则仍使用 `--select-name`："
+
+#: ../../source/how-to/per-selector-quantization.md:49
+msgid ""
+"Name rules are applied after built-in target rules. The last matching "
+"rule wins. Global `--exclude` and `--exclude-name` rules are applied "
+"after local selector rules."
+msgstr "名称规则会在内置目标规则之后应用。最后一个匹配规则生效。全局 `--exclude` 和 `--exclude-name` 规则会在局部选择器规则之后应用。"
+
+#: ../../source/how-to/per-selector-quantization.md:51
+msgid "Respect mode boundaries"
+msgstr "遵守模式边界"
+
+#: ../../source/how-to/per-selector-quantization.md:53
+msgid "The legacy homogeneous form remains valid:"
+msgstr "传统的同质形式仍然有效："
+
+#: ../../source/how-to/per-selector-quantization.md:63
+msgid ""
+"Do not mix selector-local clauses with legacy homogeneous selectors in "
+"one command. This prevents a selector from silently inheriting the wrong "
+"format."
+msgstr "不要在同一条命令中混用选择器局部子句和传统同质选择器。这可以防止选择器无意中继承错误的格式。"
+
+#: ../../source/how-to/per-selector-quantization.md:65
+msgid ""
+"Per-selector mode currently supports MSE W4A16, W8A16, and W8A8. Do not "
+"combine selector-local settings with global `--bits`, `--activation-"
+"bits`, `--strategy`, `--group-size`, `--scale-dtype`, or `--chunk-size` "
+"settings for the same command. Global `--n-candidates`, `--exclude`, "
+"`--exclude-name`, the unselected-weight policy, and backend/device "
+"options remain available."
+msgstr "按选择器模式目前支持 MSE W4A16、W8A16 和 W8A8。不要在同一命令中将选择器局部设置与全局 `--bits`、`--activation-bits`、`--strategy`、`--group-size`、`--scale-dtype` 或 `--chunk-size` 设置组合使用。全局 `--n-candidates`、`--exclude`、`--exclude-name`、未选权重策略以及后端/设备选项仍然可用。"
+
+#: ../../source/how-to/per-selector-quantization.md:67
+msgid ""
+"The mapping is an artifact contract, not a runtime compatibility "
+"guarantee. For example, a DSV4 source FP8 attention weight matching "
+"`attention=int8` is exported as INT8 W8A8 storage, including `attn.wo_a`;"
+" it is not silently preserved as FP8 for a DeepGEMM implementation."
+msgstr "该映射是产物契约，而非运行时兼容性保证。例如，匹配 `attention=int8` 的 DSV4 源 FP8 注意力权重会导出为 INT8 W8A8 存储，包括 `attn.wo_a`；不会为了 DeepGEMM 实现而静默保留为 FP8。"
+
+#: ../../source/how-to/per-selector-quantization.md:69
+msgid "Understand the output"
+msgstr "理解输出"
+
+#: ../../source/how-to/per-selector-quantization.md:71
+msgid ""
+"The command writes one compressed-tensors checkpoint with a configuration"
+" group for every requested scheme. A mixed W4A16/W8A8 result uses the "
+"`mixed-precision` top-level format and declares `pack-quantized` or `int-"
+"quantized` on each group."
+msgstr "该命令会写入一个 compressed-tensors 检查点，并为每个请求的方案生成一个配置组。混合 W4A16/W8A8 结果使用 `mixed-precision` 顶层格式，并在每个组上声明 `pack-quantized` 或 `int-quantized`。"
+
+#: ../../source/how-to/per-selector-quantization.md:73
+msgid ""
+"DSV4 fused-attention and shared-expert runtime aliases are included in "
+"the generated mapping. Source-quantized weights that match no rule follow"
+" the existing `unselected` policy and are converted to BF16 by default."
+msgstr "生成的映射包含 DSV4 融合注意力和共享专家运行时别名。未匹配任何规则的源量化权重遵循现有的 `unselected` 策略，默认转换为 BF16。"
+
+#: ../../source/how-to/per-selector-quantization.md:75
+msgid ""
+"Use `--dry-run` to inspect the resolved plan without writing the output "
+"checkpoint."
+msgstr "使用 `--dry-run` 可在不写入输出检查点的情况下检查解析后的计划。"
+
+#: ../../source/how-to/per-selector-quantization.md:77
+msgid "Fused MoE layout inference"
+msgstr "融合 MoE 布局推断"
+
+#: ../../source/how-to/per-selector-quantization.md:79
+msgid ""
+"When a fused MoE model has no registered layout adapter, the CLI can "
+"infer the 3D bank order from a consistent `gate_up_proj` and `down_proj` "
+"pair:"
+msgstr "当融合 MoE 模型没有已注册的布局适配器时，CLI 可以根据一致的 `gate_up_proj` 和 `down_proj` 对推断三维权重组的轴顺序："
+
+#: ../../source/how-to/per-selector-quantization.md:86
+msgid ""
+"Every discovered pair must be complete, valid, and agree on one axis "
+"order. If the pairs disagree or are incomplete, quantization stops "
+"instead of guessing."
+msgstr "每个发现的权重对都必须完整且有效，并且轴顺序必须一致。如果权重对不一致或不完整，量化会停止，而不是进行猜测。"
+
+#: ../../source/how-to/per-selector-quantization.md:88
+msgid "Validate the result"
+msgstr "验证结果"
+
+#: ../../source/how-to/per-selector-quantization.md:90
+msgid "After dry-run review, generate the checkpoint and run:"
+msgstr "完成 dry-run 检查后，生成检查点并运行："
+
+#: ../../source/how-to/per-selector-quantization.md:96
+msgid ""
+"Then test the exact artifact in the target runtime. Artifact mapping does"
+" not establish that the runtime has a compatible kernel."
+msgstr "然后在目标运行时中测试完全相同的产物。产物映射并不能证明运行时拥有兼容的内核。"
+

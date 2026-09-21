@@ -1,0 +1,788 @@
+﻿# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/how-to/validate-outputs.md:1
+msgid "Validate outputs"
+msgstr "验证输出"
+
+#: ../../source/how-to/validate-outputs.md:3
+msgid ""
+"Validate generated artifacts before runtime loading so file structure, "
+"metadata, shard indices, and quantization declarations are checked "
+"consistently. Structural validation is one gate in a larger deployment "
+"workflow."
+msgstr "在运行时加载之前验证生成的工件，以便一致地检查文件结构、元数据、分片索引和量化声明。结构验证是更大部署工作流中的一道关口。"
+
+#: ../../source/how-to/validate-outputs.md:5
+msgid "Prerequisites"
+msgstr "前提条件"
+
+#: ../../source/how-to/validate-outputs.md:7
+msgid "Before validation, make sure you have:"
+msgstr "验证前，请确保你已具备："
+
+#: ../../source/how-to/validate-outputs.md:9
+msgid "a completed conversion or quantization output directory"
+msgstr "已完成转换或量化的输出目录"
+
+#: ../../source/how-to/validate-outputs.md:10
+msgid "the full output directory, not only `.safetensors` files"
+msgstr "完整输出目录，而不仅是 `.safetensors` 文件"
+
+#: ../../source/how-to/validate-outputs.md:11
+msgid "the exact command, recipe, model revision, and backend used for generation"
+msgstr "生成时使用的确切命令、recipe、模型修订版本和后端"
+
+#: ../../source/how-to/validate-outputs.md:12
+msgid ""
+"access to the target inference framework for runtime checks after structural"
+" validation"
+msgstr "可访问目标推理框架，以便在结构验证后执行运行时检查"
+
+#: ../../source/how-to/validate-outputs.md:14
+msgid "Run structural validation"
+msgstr "运行结构验证"
+
+#: ../../source/how-to/validate-outputs.md:16
+msgid "Validate the output directory:"
+msgstr "验证输出目录："
+
+#: ../../source/how-to/validate-outputs.md:22
+msgid "Expected result:"
+msgstr "预期结果："
+
+#: ../../source/how-to/validate-outputs.md:28
+msgid "Save JSON output when reporting or archiving a result:"
+msgstr "报告或归档结果时保存 JSON 输出："
+
+#: ../../source/how-to/validate-outputs.md:36
+msgid "Check the output contract"
+msgstr "检查输出契约"
+
+#: ../../source/how-to/validate-outputs.md:38
+msgid ""
+"Keep the entire generated directory together. The required method-specific "
+"files differ by output ABI."
+msgstr "保持整个生成目录完整。不同输出 ABI 所需的方法专用文件不同。"
+
+#: ../../source/how-to/validate-outputs.md:40
+msgid "Compressed-tensors output normally contains:"
+msgstr "compressed-tensors 输出通常包含："
+
+#: ../../source/how-to/validate-outputs.md:51
+msgid ""
+"Native GPTQ or AutoRound output normally contains `config.json`, "
+"`quantize_config.json`, native GPTQ tensors and shards, and a native index "
+"or single-file weight file when emitted. Native AWQ output normally contains"
+" `config.json`, `quant_config.json`, native AWQ tensors and shards, and a "
+"native index or single-file weight file when emitted. BF16 conversion can "
+"contain `conversion_report.json`."
+msgstr ""
+"原生 GPTQ 或 AutoRound 输出通常包含 `config.json`、`quantize_config.json`、原生 GPTQ "
+"张量和分片，以及生成时的原生索引或单文件权重文件。原生 AWQ 输出通常包含 `config.json`、`quant_config.json`、原生 "
+"AWQ 张量和分片，以及生成时的原生索引或单文件权重文件。BF16 转换可能包含 `conversion_report.json`。"
+
+#: ../../source/how-to/validate-outputs.md:54
+msgid ""
+"Do not publish or copy only the `.safetensors` files. Keep configuration, "
+"index or single-file weights, method metadata, quantization metadata, and "
+"supporting tokenizer files when they are present."
+msgstr "不要只发布或复制 `.safetensors` 文件。存在配置、索引或单文件权重、方法元数据、量化元数据以及支持 tokenizer 文件时，请一并保留。"
+
+#: ../../source/how-to/validate-outputs.md:57
+msgid ""
+"See the [output files reference](../reference/output-files.md) for the "
+"directory-level contract."
+msgstr "目录级契约请参见 [output files reference](../reference/output-files.md)。"
+
+#: ../../source/how-to/validate-outputs.md:59
+msgid "Understand what validation checks"
+msgstr "了解验证会检查什么"
+
+#: ../../source/how-to/validate-outputs.md:61
+msgid "Validation checks generated artifact structure and metadata, including:"
+msgstr "验证会检查生成工件的结构和元数据，包括："
+
+#: ../../source/how-to/validate-outputs.md:63
+msgid "shard and index consistency"
+msgstr "分片与索引一致性"
+
+#: ../../source/how-to/validate-outputs.md:64
+msgid "actual shard tensors corresponding to index entries"
+msgstr "与索引条目对应的实际分片张量"
+
+#: ../../source/how-to/validate-outputs.md:65
+msgid "declared total size when present"
+msgstr "存在时声明的总大小"
+
+#: ../../source/how-to/validate-outputs.md:66
+msgid "compressed-tensors manifest-declared weights and scales"
+msgstr "compressed-tensors 清单声明的权重和 scale"
+
+#: ../../source/how-to/validate-outputs.md:67
+msgid "INT4 and INT8 storage shapes and metadata"
+msgstr "INT4 和 INT8 存储形状及元数据"
+
+#: ../../source/how-to/validate-outputs.md:68
+msgid "native GPTQ tensors such as `qweight`, `qzeros`, `scales`, and `g_idx`"
+msgstr "原生 GPTQ 张量，例如 `qweight`、`qzeros`、`scales` 和 `g_idx`"
+
+#: ../../source/how-to/validate-outputs.md:69
+msgid "native AWQ tensors such as `qweight`, `qzeros`, and `scales`"
+msgstr "原生 AWQ 张量，例如 `qweight`、`qzeros` 和 `scales`"
+
+#: ../../source/how-to/validate-outputs.md:70
+msgid "`config.json` quantization configuration and method metadata"
+msgstr "`config.json` 中的量化配置和方法元数据"
+
+#: ../../source/how-to/validate-outputs.md:71
+msgid "supported dynamic-token INT8 activation declarations for W8A8 output"
+msgstr "W8A8 输出支持的动态 token INT8 激活声明"
+
+#: ../../source/how-to/validate-outputs.md:72
+msgid "tokenizer and supporting files when they are preserved by the source model"
+msgstr "源模型保留 tokenizer 和支持文件时的这些文件"
+
+#: ../../source/how-to/validate-outputs.md:74
+msgid ""
+"Validation does not decode packed words to prove nibble or byte-code "
+"semantics. It also does not independently prove every mathematical "
+"relationship between physical storage and logical shape, and it cannot prove"
+" that an orphan manifest entry has a corresponding tensor in every possible "
+"malformed artifact."
+msgstr "验证不会解码打包字来证明半字节或字节码语义。它也不会独立证明物理存储与逻辑形状之间的每一个数学关系，并且无法证明孤立清单条目在所有可能的畸形工件中都有对应张量。"
+
+#: ../../source/how-to/validate-outputs.md:76
+msgid "Understand what validation does not check"
+msgstr "了解验证不会检查什么"
+
+#: ../../source/how-to/validate-outputs.md:78
+msgid "Validation does not prove:"
+msgstr "验证不能证明："
+
+#: ../../source/how-to/validate-outputs.md:80
+msgid "the target inference framework can load the artifact"
+msgstr "目标推理框架能够加载该工件"
+
+#: ../../source/how-to/validate-outputs.md:81
+msgid ""
+"the target accelerator has W4A16, W8A16, W8A8, GPTQ, AWQ, or AutoRound "
+"kernels"
+msgstr "目标加速器具备 W4A16、W8A16、W8A8、GPTQ、AWQ 或 AutoRound 内核"
+
+#: ../../source/how-to/validate-outputs.md:82
+msgid "the runtime selected the intended kernel rather than a fallback"
+msgstr "运行时选择了预期内核而不是回退路径"
+
+#: ../../source/how-to/validate-outputs.md:83
+msgid "accuracy is acceptable"
+msgstr "准确率可接受"
+
+#: ../../source/how-to/validate-outputs.md:84
+msgid "memory usage, latency, TTFT, TPOT, or throughput meets production goals"
+msgstr "内存使用、延迟、TTFT、TPOT 或吞吐量满足生产目标"
+
+#: ../../source/how-to/validate-outputs.md:85
+msgid "tensor parallel settings are correct"
+msgstr "张量并行设置正确"
+
+#: ../../source/how-to/validate-outputs.md:86
+msgid "the model is ready for production"
+msgstr "模型已可用于生产"
+
+#: ../../source/how-to/validate-outputs.md:88
+msgid "Run runtime loading checks"
+msgstr "运行运行时加载检查"
+
+#: ../../source/how-to/validate-outputs.md:90
+msgid ""
+"After structural validation, load the model in the target runtime. The "
+"runtime must support:"
+msgstr "结构验证之后，在目标运行时中加载模型。运行时必须支持："
+
+#: ../../source/how-to/validate-outputs.md:92
+msgid ""
+"Reading `config.json` and its `quantization_config` or native method "
+"metadata."
+msgstr "读取 `config.json` 及其 `quantization_config` 或原生方法元数据。"
+
+#: ../../source/how-to/validate-outputs.md:93
+msgid "Loading the declared compressed-tensors, GPTQ, AWQ, or AutoRound ABI."
+msgstr "加载声明的 compressed-tensors、GPTQ、AWQ 或 AutoRound ABI。"
+
+#: ../../source/how-to/validate-outputs.md:94
+msgid "Mapping the exact model architecture and layer names."
+msgstr "映射确切的模型架构和层名称。"
+
+#: ../../source/how-to/validate-outputs.md:95
+msgid ""
+"Executing the required Linear or MoE kernel path, or a verified correctness "
+"fallback."
+msgstr "执行所需的 Linear 或 MoE 内核路径，或已验证正确性的回退路径。"
+
+#: ../../source/how-to/validate-outputs.md:96
+msgid ""
+"Fitting tensor parallelism, KV cache, workspace, communication buffers, "
+"graph capture, and framework overhead into available memory."
+msgstr "使张量并行、KV cache、工作区、通信缓冲区、图捕获和框架开销都能放入可用内存。"
+
+#: ../../source/how-to/validate-outputs.md:98
+msgid "Example online serving command for a compatible vLLM environment:"
+msgstr "兼容 vLLM 环境的在线服务命令示例："
+
+#: ../../source/how-to/validate-outputs.md:107
+msgid "Example offline smoke test:"
+msgstr "离线冒烟测试示例："
+
+#: ../../source/how-to/validate-outputs.md:123
+msgid ""
+"vLLM can support compressed-tensors for particular combinations of version, "
+"model, hardware, and quantization scheme. See the [vLLM compressed-tensors "
+"integration "
+"guide](https://docs.vllm.ai/en/stable/features/quantization/llm_compressor/)"
+" and [vLLM quantization support "
+"matrix](https://docs.vllm.ai/en/stable/features/quantization/), then verify "
+"the exact target combination independently. The `compressed-tensors` package"
+" describes and stores quantized weights but does not provide a kernel for "
+"every framework or accelerator."
+msgstr ""
+"vLLM 可以在特定的版本、模型、硬件和量化方案组合下支持 compressed-tensors。请参见 [vLLM compressed-"
+"tensors integration "
+"guide](https://docs.vllm.ai/en/stable/features/quantization/llm_compressor/)"
+" 和 [vLLM quantization support "
+"matrix](https://docs.vllm.ai/en/stable/features/quantization/)，然后独立验证确切的目标组合"
+"。`compressed-tensors` 包描述并存储量化权重，但不会为每个框架或加速器提供内核。"
+
+#: ../../source/how-to/validate-outputs.md:125
+msgid "Check runtime logs for:"
+msgstr "检查运行时日志中的以下内容："
+
+#: ../../source/how-to/validate-outputs.md:127
+msgid "recognition of the declared quantization method"
+msgstr "是否识别声明的量化方法"
+
+#: ../../source/how-to/validate-outputs.md:128
+msgid "the expected W4A16, W8A16, W8A8, GPTQ, AWQ, or AutoRound path"
+msgstr "预期的 W4A16、W8A16、W8A8、GPTQ、AWQ 或 AutoRound 路径"
+
+#: ../../source/how-to/validate-outputs.md:129
+msgid "a compatible Dense or MoE kernel path"
+msgstr "兼容的 Dense 或 MoE 内核路径"
+
+#: ../../source/how-to/validate-outputs.md:130
+msgid "absence of unexpected fallback or dequantization"
+msgstr "没有意外回退或反量化"
+
+#: ../../source/how-to/validate-outputs.md:131
+msgid "the actual tensor-parallel and memory settings"
+msgstr "实际的张量并行和内存设置"
+
+#: ../../source/how-to/validate-outputs.md:133
+msgid ""
+"If vLLM or another runtime fails to load, do not conclude from that failure "
+"alone that the model files are invalid. Check the runtime version, model "
+"architecture mapping, hardware support, driver and device runtime, and "
+"kernel availability."
+msgstr "如果 vLLM 或其他运行时加载失败，不要仅凭该失败就断定模型文件无效。请检查运行时版本、模型架构映射、硬件支持、驱动和设备运行时以及内核可用性。"
+
+#: ../../source/how-to/validate-outputs.md:135
+msgid "Test target platforms"
+msgstr "测试目标平台"
+
+#: ../../source/how-to/validate-outputs.md:137
+msgid "Use the actual backend name registered by the local PyTorch extension:"
+msgstr "使用本地 PyTorch 扩展实际注册的后端名称："
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Target"
+msgstr "目标"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Generation or loading guidance"
+msgstr "生成或加载指导"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "NVIDIA GPU"
+msgstr "NVIDIA GPU"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid ""
+"Use the compatible CUDA, PyTorch, driver, and runtime stack, commonly "
+"`--backend cuda --device cuda:0`"
+msgstr "使用兼容的 CUDA、PyTorch、驱动和运行时栈，常见为 `--backend cuda --device cuda:0`"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "PPU"
+msgstr "PPU"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid ""
+"Use the backend and device identifiers registered by the PPU PyTorch "
+"extension"
+msgstr "使用 PPU PyTorch 扩展注册的后端和设备标识符"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Haiguang DCU"
+msgstr "海光 DCU"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid ""
+"Use the backend and device identifiers registered by the DCU PyTorch "
+"extension"
+msgstr "使用 DCU PyTorch 扩展注册的后端和设备标识符"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Other accelerator"
+msgstr "其他加速器"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid ""
+"Use the actual registered PyTorch backend name rather than inferring it from"
+" the vendor name"
+msgstr "使用实际注册的 PyTorch 后端名称，而不是从厂商名称推断"
+
+#: ../../source/how-to/validate-outputs.md:146
+msgid ""
+"If the target extension or quantization operator is not ready, generate on "
+"CPU or CUDA and copy the artifact to the target environment for independent "
+"loading, correctness, memory, and performance testing. Conversion and non-"
+"calibrated MSE may use operation-level CPU fallback. Calibrated GPTQ, AWQ, "
+"and AutoRound execution requires an available backend and does not silently "
+"fall back to CPU."
+msgstr ""
+"如果目标扩展或量化算子尚未就绪，请在 CPU 或 CUDA 上生成，并将工件复制到目标环境中进行独立的加载、正确性、内存和性能测试。转换和非校准 MSE"
+" 可以使用算子级 CPU 回退。校准式 GPTQ、AWQ 和 AutoRound 执行需要可用后端，不会静默回退到 CPU。"
+
+#: ../../source/how-to/validate-outputs.md:148
+msgid "Run accuracy and performance tests"
+msgstr "运行准确性和性能测试"
+
+#: ../../source/how-to/validate-outputs.md:150
+msgid ""
+"Compare every candidate with an unquantized or BF16 reference using the same"
+" model revision, tokenizer, prompts, runtime version, hardware, tensor-"
+"parallel configuration, and workload."
+msgstr "使用相同的模型修订版本、tokenizer、prompt、运行时版本、硬件、张量并行配置和工作负载，将每个候选方案与未量化或 BF16 参考进行比较。"
+
+#: ../../source/how-to/validate-outputs.md:152
+msgid "Record at least:"
+msgstr "至少记录："
+
+#: ../../source/how-to/validate-outputs.md:154
+msgid "task or evaluation dataset and prompt format"
+msgstr "任务或评估数据集以及 prompt 格式"
+
+#: ../../source/how-to/validate-outputs.md:155
+msgid "exact output comparison or score"
+msgstr "精确输出对比或分数"
+
+#: ../../source/how-to/validate-outputs.md:156
+msgid "peak memory and memory allocation settings"
+msgstr "峰值内存和内存分配设置"
+
+#: ../../source/how-to/validate-outputs.md:157
+msgid "time to first token, or TTFT"
+msgstr "首 token 时间，即 TTFT"
+
+#: ../../source/how-to/validate-outputs.md:158
+msgid "time per output token, or TPOT"
+msgstr "每输出 token 时间，即 TPOT"
+
+#: ../../source/how-to/validate-outputs.md:159
+msgid "prompt and generation throughput"
+msgstr "prompt 和生成吞吐量"
+
+#: ../../source/how-to/validate-outputs.md:160
+msgid "batch size, sequence lengths, concurrency, and tensor parallel size"
+msgstr "批大小、序列长度、并发度和张量并行大小"
+
+#: ../../source/how-to/validate-outputs.md:161
+msgid "kernel and fallback messages"
+msgstr "内核和回退消息"
+
+#: ../../source/how-to/validate-outputs.md:162
+msgid "failures, hangs, and long-run stability"
+msgstr "失败、卡住以及长时间运行稳定性"
+
+#: ../../source/how-to/validate-outputs.md:164
+msgid ""
+"A successful generation command is functional evidence only. It is not by "
+"itself accuracy, memory, throughput, or production evidence."
+msgstr "成功的生成命令只是功能性证据。它本身并不是准确性、内存、吞吐量或生产可用性的证据。"
+
+#: ../../source/how-to/validate-outputs.md:166
+msgid "Execute the recommended test matrix"
+msgstr "执行推荐测试矩阵"
+
+#: ../../source/how-to/validate-outputs.md:168
+msgid ""
+"Use a fresh output directory for every case. Run `inspect`, dry-run, "
+"generation, `validate`, runtime loading, and the applicable quality tests "
+"for each case."
+msgstr "每个用例都使用新的输出目录。对每个用例运行 `inspect`、空运行、生成、`validate`、运行时加载以及适用的质量测试。"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Case"
+msgstr "用例"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Recommended model"
+msgstr "推荐模型"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Selection"
+msgstr "选择范围"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Quantization"
+msgstr "量化"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Purpose"
+msgstr "目的"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "B00"
+msgstr "B00"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Source FP4 or FP8 model"
+msgstr "源 FP4 或 FP8 模型"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "All recognized low-precision weights"
+msgstr "所有已识别的低精度权重"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "BF16 conversion"
+msgstr "BF16 转换"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Float compatibility and quality reference"
+msgstr "浮点兼容性和质量参考"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "D01"
+msgstr "D01"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Qwen3.5 Dense"
+msgstr "Qwen3.5 Dense"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "`linear`"
+msgstr "`linear`"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "W8A16 group-128"
+msgstr "W8A16 group-128"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Conservative full-linear baseline"
+msgstr "保守的全 Linear 基线"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "D02"
+msgstr "D02"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "W4A16 group-32"
+msgstr "W4A16 group-32"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "High-compression candidate"
+msgstr "高压缩候选方案"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "D03"
+msgstr "D03"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "W8A8 channel and token"
+msgstr "W8A8 通道和 token"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "INT8 weight and activation kernel validation"
+msgstr "INT8 权重和激活内核验证"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "D04"
+msgstr "D04"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "`attention`"
+msgstr "`attention`"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "W8A16 channel"
+msgstr "W8A16 channel"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Attention-only channel-weight test"
+msgstr "仅注意力的通道权重量化测试"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "M01"
+msgstr "M01"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Qwen3.5 MoE"
+msgstr "Qwen3.5 MoE"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "`moe.routed`"
+msgstr "`moe.routed`"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Routed expert compression"
+msgstr "路由专家压缩"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "M02"
+msgstr "M02"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "`moe.routed` and `attention`"
+msgstr "`moe.routed` 和 `attention`"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Joint expert and attention quantization"
+msgstr "专家和注意力联合量化"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "M03"
+msgstr "M03"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Fused expert expansion and full-linear W8A8"
+msgstr "融合专家展开和全 Linear W8A8"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "M04"
+msgstr "M04"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Routed expert W8A8 with other weights preserved"
+msgstr "保留其他权重的路由专家 W8A8"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "S01"
+msgstr "S01"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "DeepSeek class"
+msgstr "DeepSeek 类"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "MLA plus MLP and MoE smoke test"
+msgstr "MLA 加 MLP 和 MoE 冒烟测试"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "S02"
+msgstr "S02"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "DeepSeek MoE"
+msgstr "DeepSeek MoE"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Two-dimensional expert-bank closure"
+msgstr "二维专家权重组闭包"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "S03"
+msgstr "S03"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "MLA and expert joint quantization"
+msgstr "MLA 和专家联合量化"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "S04"
+msgstr "S04"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "W8A8 loading exploration"
+msgstr "W8A8 加载探索"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "I01"
+msgstr "I01"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Model with `self_attn.indexer`"
+msgstr "带有 `self_attn.indexer` 的模型"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "`attention` and `moe`, excluding indexer"
+msgstr "`attention` 和 `moe`，排除 indexer"
+
+#: ../../source/how-to/validate-outputs.md:53
+msgid "Keep auxiliary indexer weights out of the generic path"
+msgstr "将辅助 indexer 权重排除在通用路径之外"
+
+#: ../../source/how-to/validate-outputs.md:187
+msgid ""
+"The D04 policy uses W8A16 channel for ordinary attention weights and omits "
+"`--group-size`. W8A16 channel is still invalid for routed MoE; use W8A16 "
+"group there. W8A8 routed MoE is allowed when the complete W8A8 combination "
+"is used. Do not run quantization again on an already generated compressed-"
+"tensors artifact to combine cases. Start from the original source checkpoint"
+" for each case."
+msgstr ""
+"D04 策略对普通注意力权重使用 W8A16 channel，并省略 `--group-size`。W8A16 channel 仍不适用于路由 "
+"MoE；那里请使用 W8A16 group。使用完整 W8A8 组合时允许 W8A8 路由 MoE。不要为了组合用例而对已生成的 compressed-"
+"tensors 工件再次运行量化。每个用例都应从原始源 checkpoint 开始。"
+
+#: ../../source/how-to/validate-outputs.md:189
+msgid "Release acceptance checklist"
+msgstr "发布验收检查清单"
+
+#: ../../source/how-to/validate-outputs.md:191
+msgid "For every candidate released to users:"
+msgstr "对于发布给用户的每个候选方案："
+
+#: ../../source/how-to/validate-outputs.md:193
+msgid "Save source model name, revision, and directory integrity information."
+msgstr "保存源模型名称、修订版本和目录完整性信息。"
+
+#: ../../source/how-to/validate-outputs.md:194
+msgid "Save the actual `git rev-parse HEAD` output."
+msgstr "保存实际的 `git rev-parse HEAD` 输出。"
+
+#: ../../source/how-to/validate-outputs.md:195
+msgid "Save `inspect --json` output."
+msgstr "保存 `inspect --json` 输出。"
+
+#: ../../source/how-to/validate-outputs.md:196
+msgid "Save the complete command line or recipe."
+msgstr "保存完整命令行或 recipe。"
+
+#: ../../source/how-to/validate-outputs.md:197
+msgid "Confirm `unmatched quantized: 0` in dry-run output."
+msgstr "确认空运行输出中 `unmatched quantized: 0`。"
+
+#: ../../source/how-to/validate-outputs.md:198
+msgid "Explain any CPU fallback in the generation report."
+msgstr "在生成报告中说明任何 CPU 回退。"
+
+#: ../../source/how-to/validate-outputs.md:199
+msgid "Confirm `validate` returns `Valid`."
+msgstr "确认 `validate` 返回 `Valid`。"
+
+#: ../../source/how-to/validate-outputs.md:200
+msgid "Preserve the manifest and report when the compressed-tensors path emits them."
+msgstr "当 compressed-tensors 路径生成清单和报告时，请予以保留。"
+
+#: ../../source/how-to/validate-outputs.md:201
+msgid ""
+"Complete BF16 or floating-point A/B accuracy testing in the same runtime "
+"stack."
+msgstr "在同一运行时栈中完成 BF16 或浮点 A/B 准确性测试。"
+
+#: ../../source/how-to/validate-outputs.md:202
+msgid ""
+"Complete actual loading tests on each target platform, including NVIDIA GPU,"
+" PPU, and Haiguang DCU when those targets are claimed."
+msgstr "在每个目标平台上完成实际加载测试；声明支持 NVIDIA GPU、PPU 和海光 DCU 时也包括这些平台。"
+
+#: ../../source/how-to/validate-outputs.md:203
+msgid "Record inference framework, PyTorch, driver, and device runtime versions."
+msgstr "记录推理框架、PyTorch、驱动和设备运行时版本。"
+
+#: ../../source/how-to/validate-outputs.md:204
+msgid "Record the selected kernels and any fallback path."
+msgstr "记录选中的内核和任何回退路径。"
+
+#: ../../source/how-to/validate-outputs.md:205
+msgid "Complete memory, TTFT, TPOT, throughput, and stability tests."
+msgstr "完成内存、TTFT、TPOT、吞吐量和稳定性测试。"
+
+#: ../../source/how-to/validate-outputs.md:206
+msgid "Complete expert and multi-device communication tests for Qwen3.5 MoE."
+msgstr "完成 Qwen3.5 MoE 的专家和多设备通信测试。"
+
+#: ../../source/how-to/validate-outputs.md:207
+msgid "Confirm actual MLA and expert selection counts for DeepSeek-class models."
+msgstr "确认 DeepSeek 类模型的实际 MLA 和专家选择数量。"
+
+#: ../../source/how-to/validate-outputs.md:208
+msgid "Keep the original source and previous stable artifact for rollback."
+msgstr "保留原始源和上一个稳定工件以便回滚。"
+
+#: ../../source/how-to/validate-outputs.md:210
+msgid "Write a reproducible support conclusion"
+msgstr "编写可复现的支持结论"
+
+#: ../../source/how-to/validate-outputs.md:212
+msgid ""
+"Do not report only that a model or chip is supported. Record the exact "
+"evidence boundary:"
+msgstr "不要只报告某个模型或芯片受支持。请记录确切的证据边界："
+
+#: ../../source/how-to/validate-outputs.md:225
+msgid ""
+"This format distinguishes five different claims: the tool generated an "
+"artifact, the artifact passed structural validation, the runtime loaded it, "
+"the target hardware used a supported kernel path, and the measured quality "
+"and performance met the stated goal."
+msgstr "这种格式区分了五种不同声明：工具生成了工件、工件通过了结构验证、运行时加载了它、目标硬件使用了受支持的内核路径，以及测得的质量和性能达到了声明目标。"
+
+#: ../../source/how-to/validate-outputs.md:227
+msgid "Fallbacks"
+msgstr "回退处理"
+
+#: ../../source/how-to/validate-outputs.md:229
+msgid "If structural validation passes but runtime loading fails:"
+msgstr "如果结构验证通过但运行时加载失败："
+
+#: ../../source/how-to/validate-outputs.md:231
+msgid ""
+"Verify inference framework support for the declared `quantization_config` or"
+" native method metadata."
+msgstr "验证推理框架是否支持声明的 `quantization_config` 或原生方法元数据。"
+
+#: ../../source/how-to/validate-outputs.md:232
+msgid "Check PyTorch, driver, device runtime, and framework versions."
+msgstr "检查 PyTorch、驱动、设备运行时和框架版本。"
+
+#: ../../source/how-to/validate-outputs.md:233
+msgid "Confirm the target hardware has matching kernels."
+msgstr "确认目标硬件具备匹配的内核。"
+
+#: ../../source/how-to/validate-outputs.md:234
+msgid "Check model architecture and tensor-name mapping."
+msgstr "检查模型架构和张量名称映射。"
+
+#: ../../source/how-to/validate-outputs.md:235
+msgid "Test smaller tensor-parallel settings and memory limits."
+msgstr "测试更小的张量并行设置和内存限制。"
+
+#: ../../source/how-to/validate-outputs.md:236
+msgid "Compare runtime logs with `quantization_report.json` when that report exists."
+msgstr "当 `quantization_report.json` 存在时，将运行时日志与其进行比较。"
+
+#: ../../source/how-to/validate-outputs.md:237
+msgid ""
+"Treat CPU fallback as functional evidence only. It does not establish "
+"accelerator performance or deployment compatibility."
+msgstr "仅将 CPU 回退视为功能性证据。它不能证明加速器性能或部署兼容性。"
+

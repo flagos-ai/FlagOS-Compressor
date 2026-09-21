@@ -1,0 +1,138 @@
+﻿# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/index.md:79
+msgid "Tutorial"
+msgstr "教程"
+
+#: ../../source/index.md:87 ../../source/index.md:101 ../../source/index.md:119
+msgid "Overview"
+msgstr "概览"
+
+#: ../../source/index.md:87
+msgid "Explanation"
+msgstr "说明"
+
+#: ../../source/index.md:101
+msgid "How-to guides"
+msgstr "操作指南"
+
+#: ../../source/index.md:119
+msgid "Reference"
+msgstr "参考"
+
+#: ../../source/index.md:1
+msgid "FlagOS-Compressor Documentation"
+msgstr "FlagOS-Compressor 文档"
+
+#: ../../source/index.md:3
+msgid ""
+"FlagOS-Compressor is a checkpoint conversion and quantization tool for "
+"local [Hugging Face](https://huggingface.co/docs) `safetensors` model "
+"directories."
+msgstr ""
+"FlagOS-Compressor 是一个用于转换检查点和量化本地 "
+"[Hugging Face](https://huggingface.co/docs) `safetensors` 模型目录的工具。"
+
+#: ../../source/index.md:5
+msgid ""
+"Use this documentation to install the tool, quantize model weights, "
+"convert checkpoints, calibrate outputs, and validate generated artifacts."
+msgstr ""
+"使用本文档安装工具、量化模型权重、转换检查点、校准输出，并验证生成的产物。"
+
+#: ../../source/index.md:7
+msgid "Start here"
+msgstr "从这里开始"
+
+#: ../../source/index.md:14
+msgid "Run your first quantization"
+msgstr "执行第一次量化"
+
+#: ../../source/index.md:18
+msgid ""
+"Follow one complete inspect -> quantize -> validate path with a local "
+"model directory."
+msgstr ""
+"按照一条完整的检查 -> 量化 -> 验证流程处理本地模型目录。"
+
+#: ../../source/index.md:21
+msgid "Install and prepare the CLI"
+msgstr "安装并准备命令行工具"
+
+#: ../../source/index.md:25
+msgid ""
+"Set up dependencies, optional extras, and the command-line entrypoint "
+"before running a job."
+msgstr ""
+"在运行任务前配置依赖、可选扩展和命令行入口。"
+
+#: ../../source/index.md:29
+msgid "Common workflows"
+msgstr "常见工作流"
+
+#: ../../source/index.md:36
+msgid "Quantize weights"
+msgstr "量化权重"
+
+#: ../../source/index.md:40
+msgid "Run weight-only quantization with a recipe or explicit CLI options."
+msgstr "使用配方或显式的命令行选项执行仅权重量化。"
+
+#: ../../source/index.md:43
+msgid "Calibrate models"
+msgstr "校准模型"
+
+#: ../../source/index.md:47
+msgid "Collect calibration data and use it for quantization workflows."
+msgstr "收集校准数据，并将其用于量化工作流。"
+
+#: ../../source/index.md:50
+msgid "Select layers"
+msgstr "选择层"
+
+#: ../../source/index.md:54
+msgid "Target modules with selectors, regex rules, and policy constraints."
+msgstr "使用选择器、正则表达式规则和策略约束定位模块。"
+
+#: ../../source/index.md:57
+msgid "Validate outputs"
+msgstr "验证输出"
+
+#: ../../source/index.md:61
+msgid "Check generated artifacts before loading or publishing a compressed model."
+msgstr "在加载或发布压缩模型前检查生成的产物。"
+
+#: ../../source/index.md:64
+msgid "Convert FP4 and FP8"
+msgstr "转换 FP4 和 FP8"
+
+#: ../../source/index.md:68
+msgid "Convert low-precision checkpoint formats back to BF16 when needed."
+msgstr "根据需要将低精度检查点格式转换回 BF16。"
+
+#: ../../source/index.md:71
+msgid "Troubleshoot failures"
+msgstr "排查故障"
+
+#: ../../source/index.md:75
+msgid "Recover from common configuration, validation, and model-family issues."
+msgstr "解决常见的配置、验证和模型系列问题。"

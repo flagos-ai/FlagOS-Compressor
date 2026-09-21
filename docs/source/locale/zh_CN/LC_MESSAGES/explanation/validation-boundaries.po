@@ -1,0 +1,138 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/explanation/validation-boundaries.md:1
+msgid "Validation boundaries"
+msgstr "验证边界"
+
+#: ../../source/explanation/validation-boundaries.md:3
+msgid ""
+"Validation checks whether a converted or quantized output directory is "
+"internally consistent. It is a structural gate before runtime testing, "
+"not a guarantee of deployment readiness."
+msgstr "验证会检查转换或量化输出目录的内部一致性。它是运行时测试前的结构门槛，并不保证已可部署。"
+
+#: ../../source/explanation/validation-boundaries.md:5
+msgid "What validation proves"
+msgstr "验证可以证明什么"
+
+#: ../../source/explanation/validation-boundaries.md:7
+msgid ""
+"Validation can confirm that the generated artifact has the expected file "
+"and metadata structure. It checks areas such as:"
+msgstr "验证可以确认生成的构件具有预期的文件和元数据结构。它会检查以下方面："
+
+#: ../../source/explanation/validation-boundaries.md:9
+msgid "shard index consistency."
+msgstr "分片索引一致性。"
+
+#: ../../source/explanation/validation-boundaries.md:10
+msgid "referenced weight and scale tensors."
+msgstr "被引用的权重和 scale 张量。"
+
+#: ../../source/explanation/validation-boundaries.md:11
+msgid "expected INT4 or INT8 storage shapes."
+msgstr "预期的 INT4 或 INT8 存储形状。"
+
+#: ../../source/explanation/validation-boundaries.md:12
+msgid "quantization manifest entries."
+msgstr "量化清单条目。"
+
+#: ../../source/explanation/validation-boundaries.md:13
+msgid "output configuration declarations."
+msgstr "输出配置声明。"
+
+#: ../../source/explanation/validation-boundaries.md:14
+msgid "required report and support files."
+msgstr "必需的报告和支持文件。"
+
+#: ../../source/explanation/validation-boundaries.md:16
+msgid ""
+"A passing validation result means the artifact is well-formed according "
+"to FlagOS-Compressor's checks."
+msgstr "验证通过表示该构件按照 FlagOS-Compressor 的检查规则格式正确。"
+
+#: ../../source/explanation/validation-boundaries.md:18
+msgid "What validation does not prove"
+msgstr "验证不能证明什么"
+
+#: ../../source/explanation/validation-boundaries.md:20
+msgid "Validation does not prove:"
+msgstr "验证不能证明："
+
+#: ../../source/explanation/validation-boundaries.md:22
+msgid "a runtime framework can load the artifact."
+msgstr "运行时框架能够加载该构件。"
+
+#: ../../source/explanation/validation-boundaries.md:23
+msgid "target hardware has compatible kernels."
+msgstr "目标硬件具有兼容内核。"
+
+#: ../../source/explanation/validation-boundaries.md:24
+msgid "graph compilation will succeed."
+msgstr "图编译会成功。"
+
+#: ../../source/explanation/validation-boundaries.md:25
+msgid "accuracy is acceptable."
+msgstr "精度可以接受。"
+
+#: ../../source/explanation/validation-boundaries.md:26
+msgid "memory and performance targets are met."
+msgstr "内存和性能目标已满足。"
+
+#: ../../source/explanation/validation-boundaries.md:27
+msgid "tensor parallel settings are valid."
+msgstr "张量并行设置有效。"
+
+#: ../../source/explanation/validation-boundaries.md:29
+msgid "These are runtime and evaluation responsibilities."
+msgstr "这些属于运行时和评估职责。"
+
+#: ../../source/explanation/validation-boundaries.md:31
+msgid "Why runtime checks remain necessary"
+msgstr "为什么仍需进行运行时检查"
+
+#: ../../source/explanation/validation-boundaries.md:33
+msgid ""
+"Inference frameworks interpret `config.json`, quantization metadata, and "
+"weight storage formats through their own loaders and kernels. Support "
+"varies by framework version, backend, device, and quantization scheme."
+msgstr "推理框架会通过自身的加载器和内核解释 `config.json`、量化元数据和权重存储格式。支持情况会因框架版本、后端、设备和量化方案而异。"
+
+#: ../../source/explanation/validation-boundaries.md:35
+msgid ""
+"For example, a W8A8 artifact can pass structural validation while still "
+"failing on a target platform that lacks dynamic per-token INT8 kernels."
+msgstr "例如，W8A8 构件可能通过结构验证，但仍会在缺少动态逐 token INT8 内核的目标平台上失败。"
+
+#: ../../source/explanation/validation-boundaries.md:37
+msgid "Practical validation chain"
+msgstr "实际验证链"
+
+#: ../../source/explanation/validation-boundaries.md:39
+msgid "A complete validation chain has multiple gates:"
+msgstr "完整的验证链包含多个门槛："
+
+#: ../../source/explanation/validation-boundaries.md:50
+msgid ""
+"FlagOS-Compressor owns the first four gates. The final runtime gates must"
+" be executed in the deployment environment."
+msgstr "FlagOS-Compressor 负责前四个门槛。最终的运行时门槛必须在部署环境中执行。"

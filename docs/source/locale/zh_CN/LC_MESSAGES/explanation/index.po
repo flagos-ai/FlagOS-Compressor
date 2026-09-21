@@ -1,0 +1,93 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/explanation/index.md:1
+msgid "Explanation"
+msgstr "说明"
+
+#: ../../source/explanation/index.md:3
+msgid ""
+"Use these pages to understand FlagOS-Compressor concepts, boundaries, and"
+" processing models. These pages explain why the tool behaves as it does. "
+"Use the [how-to guides](../how-to/index.md) when you need task steps."
+msgstr "请使用这些页面了解 FlagOS-Compressor 的概念、边界和处理模型。这些页面说明该工具行为背后的原因。需要任务步骤时，请使用 [how-to guides](../how-to/index.md)。"
+
+#: ../../source/explanation/index.md:5
+msgid "Concept map"
+msgstr "概念图"
+
+#: ../../source/explanation/index.md
+msgid "Page"
+msgstr "页面"
+
+#: ../../source/explanation/index.md
+msgid "Concept"
+msgstr "概念"
+
+#: ../../source/explanation/index.md
+msgid "[Project scope](what-is-flagos-compressor.md)"
+msgstr "[项目范围](what-is-flagos-compressor.md)"
+
+#: ../../source/explanation/index.md
+msgid "project scope and non-goals"
+msgstr "项目范围和非目标"
+
+#: ../../source/explanation/index.md
+msgid "[Architecture](architecture.md)"
+msgstr "[架构](architecture.md)"
+
+#: ../../source/explanation/index.md
+msgid "major tool responsibilities and data flow"
+msgstr "工具的主要职责和数据流"
+
+#: ../../source/explanation/index.md
+msgid "[Processing pipeline](processing-pipeline.md)"
+msgstr "[处理流水线](processing-pipeline.md)"
+
+#: ../../source/explanation/index.md
+msgid ""
+"how local checkpoint directories are inspected, converted, quantized, and"
+" written"
+msgstr "本地 checkpoint 目录如何被检查、转换、量化和写入"
+
+#: ../../source/explanation/index.md
+msgid "[Quantization families](quantization-families.md)"
+msgstr "[量化类别](quantization-families.md)"
+
+#: ../../source/explanation/index.md
+msgid "differences between MSE, GPTQ, AWQ, AutoRound, and output schemes"
+msgstr "MSE、GPTQ、AWQ、AutoRound 与输出方案之间的区别"
+
+#: ../../source/explanation/index.md
+msgid "[Selection semantics](selection-semantics.md)"
+msgstr "[选择语义](selection-semantics.md)"
+
+#: ../../source/explanation/index.md
+msgid "how selectors form a safe set of weights"
+msgstr "选择器如何形成安全的权重集合"
+
+#: ../../source/explanation/index.md
+msgid "[Validation boundaries](validation-boundaries.md)"
+msgstr "[验证边界](validation-boundaries.md)"
+
+#: ../../source/explanation/index.md
+msgid "what artifact validation can and cannot prove"
+msgstr "构件验证能够证明和不能证明的内容"

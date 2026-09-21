@@ -1,0 +1,336 @@
+﻿# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/how-to/calibrate-models.md:1
+msgid "Calibrate models"
+msgstr "校准模型"
+
+#: ../../source/how-to/calibrate-models.md:3
+msgid ""
+"Use calibration data for GPTQ, AWQ, AutoRound, or another method that needs "
+"representative activations. Calibrated execution uses the original "
+"Transformers model definition and requires `transformers>=5,<6` plus an "
+"available selected backend. Unlike the non-calibrated path, it does not "
+"silently use CPU fallback when a requested accelerator is unavailable."
+msgstr ""
+"为 GPTQ、AWQ、AutoRound 或其他需要代表性激活的方法使用校准数据。校准执行使用原始 Transformers 模型定义，并要求 "
+"`transformers>=5,<6` 以及可用的已选择后端。与非校准路径不同，当请求的加速器不可用时，它不会静默使用 CPU 回退。"
+
+#: ../../source/how-to/calibrate-models.md:5
+msgid "Prerequisites"
+msgstr "前提条件"
+
+#: ../../source/how-to/calibrate-models.md:7
+msgid "Before calibration, prepare:"
+msgstr "校准前，请准备："
+
+#: ../../source/how-to/calibrate-models.md:9
+msgid "a tokenizer-compatible source model directory"
+msgstr "与 tokenizer 兼容的源模型目录"
+
+#: ../../source/how-to/calibrate-models.md:10
+msgid ""
+"a local `.txt`, `.text`, JSON, or JSONL calibration file, or a Hugging Face "
+"dataset name"
+msgstr "本地 `.txt`、`.text`、JSON 或 JSONL 校准文件，或 Hugging Face 数据集名称"
+
+#: ../../source/how-to/calibrate-models.md:11
+msgid "an appropriate text column for structured data"
+msgstr "适用于结构化数据的文本列"
+
+#: ../../source/how-to/calibrate-models.md:12
+msgid "the optional `datasets` extra for a Hugging Face dataset name"
+msgstr "用于 Hugging Face 数据集名称的可选 `datasets` extra"
+
+#: ../../source/how-to/calibrate-models.md:13
+msgid "a sample count and sequence length that fit available memory"
+msgstr "适合可用内存的样本数量和序列长度"
+
+#: ../../source/how-to/calibrate-models.md:14
+msgid "an available backend and device"
+msgstr "可用的后端和设备"
+
+#: ../../source/how-to/calibrate-models.md:15
+msgid ""
+"`--trust-remote-code` only when the Transformers model or tokenizer requires"
+" it and you have reviewed that requirement"
+msgstr "仅当 Transformers 模型或 tokenizer 需要且你已审查该要求时，才使用 `--trust-remote-code`"
+
+#: ../../source/how-to/calibrate-models.md:17
+msgid ""
+"The `--trust-remote-code` flag applies to model and tokenizer loading. It "
+"does not pass a trust setting to Hugging Face dataset loading."
+msgstr "`--trust-remote-code` 标志适用于模型和 tokenizer 加载。它不会向 Hugging Face 数据集加载传递信任设置。"
+
+#: ../../source/how-to/calibrate-models.md:19
+#, python-brace-format
+msgid ""
+"The optional `datasets` dependency is loaded only for Hugging Face dataset "
+"names. Local files do not require that extra. Local text files contain one "
+"non-empty sample per line. JSONL accepts a string per line or an object with"
+" a text field. JSON accepts a top-level list, `{\"data\": [...]}`, or "
+"`{\"text\": [...]}` (and an object whose selected text column contains the "
+"records). A list or tuple of text strings is also accepted by the policy "
+"interface. Empty and over-length examples are skipped."
+msgstr ""
+"可选的 `datasets` 依赖仅在使用 Hugging Face 数据集名称时加载。本地文件不需要该额外依赖。"
+"本地文本文件每行包含一个非空样本。JSONL 接受每行一个字符串，或带有文本字段的对象。"
+"JSON 接受顶层列表、`{\"data\": [...]}` 或 `{\"text\": [...]}`（以及所选文本列包含记录的对象）。"
+"策略接口也接受由文本字符串组成的列表或元组。空样本和超长样本会被跳过。"
+
+#: ../../source/how-to/calibrate-models.md:21
+msgid ""
+"Ready-made calibration recipes are available under `examples/recipes/`. Use "
+"them as starting points, then review the model selectors, backend, and "
+"calibration inputs for the target checkpoint."
+msgstr ""
+"现成的校准 recipes 位于 `examples/recipes/` 下。请将它们作为起点，然后针对目标 checkpoint "
+"检查模型选择器、后端和校准输入。"
+
+#: ../../source/how-to/calibrate-models.md:25
+msgid "The default calibration policy is:"
+msgstr "默认校准策略为："
+
+#: ../../source/how-to/calibrate-models.md
+msgid "Setting"
+msgstr "设置"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "Default"
+msgstr "默认值"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "Maximum valid samples"
+msgstr "最大有效样本数"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "`128`"
+msgstr "`128`"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "Sequence length"
+msgstr "序列长度"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "`512`"
+msgstr "`512`"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "Seed"
+msgstr "种子"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "`42`"
+msgstr "`42`"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "Dataset split"
+msgstr "数据集划分"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "`train`"
+msgstr "`train`"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "Text column"
+msgstr "文本列"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "`text`"
+msgstr "`text`"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "Trust remote code"
+msgstr "信任远程代码"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "`false`"
+msgstr "`false`"
+
+#: ../../source/how-to/calibrate-models.md:36
+msgid "Prepare representative data"
+msgstr "准备有代表性的数据"
+
+#: ../../source/how-to/calibrate-models.md:38
+msgid ""
+"Calibration packs tokenized text into fixed-size 512-token blocks by "
+"default. The packer does not split a single source sample across unrelated "
+"examples. Select data that represents the target workload. For MoE models, "
+"the data should route tokens through the selected experts. The "
+"implementation routes selected tokens to experts, but it does not reject a "
+"run merely because a corpus failed to hit every selected expert."
+msgstr ""
+"默认情况下，校准会将分词后的文本打包为固定大小的 512-token "
+"块。打包器不会将单个源样本拆分到不相关的示例中。请选择能代表目标工作负载的数据。对于 MoE 模型，数据应将 token 路由到所选专家。实现会把所选 "
+"token 路由到专家，但不会仅因为语料未命中每个所选专家而拒绝运行。"
+
+#: ../../source/how-to/calibrate-models.md:40
+msgid ""
+"Record the source, split, number of valid samples, sequence length, seed, "
+"model revision, and backend for every run. See the [recipe "
+"reference](../reference/recipes.md) for repeatable configuration."
+msgstr ""
+"为每次运行记录来源、划分、有效样本数、序列长度、种子、模型修订版本和后端。可复现配置请参见 [recipe "
+"reference](../reference/recipes.md)。"
+
+#: ../../source/how-to/calibrate-models.md:42
+msgid "Run a local-file calibration"
+msgstr "运行本地文件校准"
+
+#: ../../source/how-to/calibrate-models.md:63
+msgid ""
+"The calibration dry-run prints the plan and does not write weights. It does "
+"not replace a completed calibration or runtime test."
+msgstr "校准空运行会打印计划，不会写入权重。它不能替代完整校准或运行时测试。"
+
+#: ../../source/how-to/calibrate-models.md:65
+msgid "Run a dataset calibration"
+msgstr "运行数据集校准"
+
+#: ../../source/how-to/calibrate-models.md:86
+msgid ""
+"Use `--trust-remote-code` only for model loading when the model or tokenizer"
+" requires custom code. Review the code before enabling it."
+msgstr "仅当模型或 tokenizer 加载需要自定义代码时，才为模型加载使用 `--trust-remote-code`。启用前请审查代码。"
+
+#: ../../source/how-to/calibrate-models.md:88
+msgid "Run calibrated quantization"
+msgstr "运行校准量化"
+
+#: ../../source/how-to/calibrate-models.md:90
+msgid "After the dry-run is correct, remove `--dry-run`:"
+msgstr "空运行正确后，移除 `--dry-run`："
+
+#: ../../source/how-to/calibrate-models.md:110
+msgid ""
+"Source FP4 or FP8 weights are staged as BF16 before Transformers loads the "
+"calibration model. In Transformers-v5 scenarios, fused experts may be "
+"temporarily exposed as per-expert `nn.Linear` modules for calibration."
+msgstr ""
+"在 Transformers 加载校准模型之前，源 FP4 或 FP8 权重会暂存为 BF16。在 Transformers-v5 "
+"场景中，融合专家可能会临时暴露为按专家划分的 `nn.Linear` 模块以便校准。"
+
+#: ../../source/how-to/calibrate-models.md:112
+msgid "Control sampling"
+msgstr "控制采样"
+
+#: ../../source/how-to/calibrate-models.md:114
+msgid "Use these options to make calibration reproducible:"
+msgstr "使用这些选项让校准可复现："
+
+#: ../../source/how-to/calibrate-models.md
+msgid "Option"
+msgstr "选项"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "Purpose"
+msgstr "目的"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "`--calibration-samples`"
+msgstr "`--calibration-samples`"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "Maximum number of valid samples"
+msgstr "最大有效样本数"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "`--calibration-seq-length`"
+msgstr "`--calibration-seq-length`"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "Maximum token sequence length"
+msgstr "最大 token 序列长度"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "`--calibration-seed`"
+msgstr "`--calibration-seed`"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "Sampling seed"
+msgstr "采样种子"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "`--calibration-split`"
+msgstr "`--calibration-split`"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "`--calibration-text-column`"
+msgstr "`--calibration-text-column`"
+
+#: ../../source/how-to/calibrate-models.md
+msgid "Text field for structured local data or dataset rows"
+msgstr "结构化本地数据或数据集行的文本字段"
+
+#: ../../source/how-to/calibrate-models.md:124
+msgid "Validate the result"
+msgstr "验证结果"
+
+#: ../../source/how-to/calibrate-models.md:126
+msgid "Run structural validation first:"
+msgstr "先运行结构验证："
+
+#: ../../source/how-to/calibrate-models.md:132
+msgid ""
+"Native GPTQ, AWQ, and AutoRound exports are checked through their native "
+"configuration and tensors. They do not use the compressed-tensors "
+"manifest/report contract in the same way. Then run runtime loading and task-"
+"level quality checks in the target inference framework."
+msgstr ""
+"原生 GPTQ、AWQ 和 AutoRound 导出通过其原生配置和张量进行检查。它们不会以同样方式使用 compressed-tensors "
+"清单/报告契约。然后在目标推理框架中运行运行时加载和任务级质量检查。"
+
+#: ../../source/how-to/calibrate-models.md:134
+msgid "Fallbacks"
+msgstr "回退处理"
+
+#: ../../source/how-to/calibrate-models.md:136
+msgid "If calibration fails:"
+msgstr "如果校准失败："
+
+#: ../../source/how-to/calibrate-models.md:138
+msgid "reduce `--calibration-samples` or `--calibration-seq-length` to fit memory"
+msgstr "降低 `--calibration-samples` 或 `--calibration-seq-length` 以适配内存"
+
+#: ../../source/how-to/calibrate-models.md:139
+msgid "verify that `--calibration-text-column` exists in structured data"
+msgstr "验证结构化数据中存在 `--calibration-text-column`"
+
+#: ../../source/how-to/calibrate-models.md:140
+msgid ""
+"use a small local JSONL file to separate data issues from dataset access "
+"issues"
+msgstr "使用小型本地 JSONL 文件来区分数据问题和数据集访问问题"
+
+#: ../../source/how-to/calibrate-models.md:141
+msgid ""
+"confirm that the selected backend is available instead of expecting "
+"calibrated CPU fallback"
+msgstr "确认所选后端可用，而不是期待校准式 CPU 回退"
+
+#: ../../source/how-to/calibrate-models.md:142
+msgid "check whether the model or tokenizer requires `--trust-remote-code`"
+msgstr "检查模型或 tokenizer 是否需要 `--trust-remote-code`"
+
+#: ../../source/how-to/calibrate-models.md:143
+msgid "archive the calibration command before rerunning with changed inputs"
+msgstr "在使用更改后的输入重新运行之前，归档校准命令"
+

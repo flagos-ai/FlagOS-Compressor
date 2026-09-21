@@ -1,0 +1,341 @@
+﻿# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/reference/output-files.md:1
+msgid "Output files"
+msgstr "输出文件"
+
+#: ../../source/reference/output-files.md:3
+msgid "Generated file documentation."
+msgstr "生成文件文档。"
+
+#: ../../source/reference/output-files.md:5
+msgid "Output directory structure"
+msgstr "输出目录结构"
+
+#: ../../source/reference/output-files.md:7
+msgid ""
+"The exact file set depends on whether the command converts to BF16, "
+"writes compressed-tensors output, or writes a native calibrated format. "
+"Copy the complete directory for every workflow."
+msgstr "The exact file set depends on whether the command converts to BF16， writes compressed-tensors 输出， or writes a 原生 calibrated format。 Copy the 完整 目录 for every 工作流。"
+
+#: ../../source/reference/output-files.md:9
+msgid "Compressed-tensors output"
+msgstr "compressed-tensors 输出"
+
+#: ../../source/reference/output-files.md:11
+msgid "A sharded compressed-tensors output commonly contains:"
+msgstr "A 分片的 compressed-tensors 输出 commonly 包含："
+
+#: ../../source/reference/output-files.md:28
+msgid ""
+"A single-file source may produce `model.safetensors` instead of the index"
+" and shard files. The compressed-tensors path emits:"
+msgstr "A single-file 源 may produce `model.safetensors` instead of the index and shard files。 The compressed-tensors 路径 emits："
+
+#: ../../source/reference/output-files.md:30
+msgid "`config.json` with the `quantization_config` declaration"
+msgstr "带有 `quantization_config` 声明的 `config.json`"
+
+#: ../../source/reference/output-files.md:31
+msgid "the standard safetensors index and shards, or a single safetensors file"
+msgstr "the 标准 safetensors index and 分片， or a single safetensors file"
+
+#: ../../source/reference/output-files.md:32
+#: ../../source/reference/output-files.md:113
+msgid "`quantization_manifest.json`"
+msgstr "`quantization_manifest.json`"
+
+#: ../../source/reference/output-files.md:33
+#: ../../source/reference/output-files.md:113
+msgid "`quantization_report.json`"
+msgstr "`quantization_report.json`"
+
+#: ../../source/reference/output-files.md:34
+msgid "tokenizer and other source support files when present"
+msgstr "tokenizer and other 源 support files when present"
+
+#: ../../source/reference/output-files.md:36
+msgid ""
+"When per-selector policies produce mixed W4A16/W8A8 output, `config.json`"
+" uses the `mixed-precision` top-level format and declares the storage "
+"format separately for each configuration group."
+msgstr "When per-选择器 policies produce mixed W4A16/W8A8 输出， `config.json` 使用 the `mixed-precision` top-level format and declares the 存储 format separately for each 配置 分组。"
+
+#: ../../source/reference/output-files.md:38
+msgid ""
+"`quantization_manifest.json` records quantized weights, scales, bit "
+"widths, logical shapes, storage shapes, and storage formats. "
+"`quantization_report.json` records processing counts, execution time, "
+"requested and actual backends, CPU fallback occurrences, operation "
+"events, and fallback reasons."
+msgstr "`quantization_manifest.json` records quantized 权重， scales， 位 widths， 逻辑 形状， 存储 形状， and 存储 格式。 `quantization_report.json` records processing counts， execution time， requested and actual backends， CPU 回退 occurrences， operation events， and 回退 reasons。"
+
+#: ../../source/reference/output-files.md:40
+msgid "Native GPTQ and AutoRound output"
+msgstr "原生 GPTQ 和 AutoRound 输出"
+
+#: ../../source/reference/output-files.md:42
+msgid ""
+"Native GPTQ and native AutoRound use the GPTQ tensor ABI rather than the "
+"compressed-tensors manifest contract. Their primary files are:"
+msgstr "原生 GPTQ and 原生 AutoRound use the GPTQ tensor ABI rather than the compressed-tensors manifest contract。 Their primary files are："
+
+#: ../../source/reference/output-files.md:53
+msgid ""
+"Depending on shard layout and exporter behavior, the native output can "
+"instead contain standard native shard names and an index such as:"
+msgstr "Depending on shard layout and exporter behavior， the 原生 输出 can instead contain 标准 原生 shard 名称 and an index such as："
+
+#: ../../source/reference/output-files.md:59
+msgid ""
+"The native tensors include `qweight`, `qzeros`, `scales`, and `g_idx`. "
+"AutoRound keeps `algorithm: autoround` provenance while using the GPTQ "
+"ABI. Native GPTQ and AutoRound should not be documented as requiring "
+"`quantization_manifest.json` or `quantization_report.json` unless a "
+"specific exporter independently emits those files."
+msgstr "The 原生 tensors 包含 `qweight`， `qzeros`， `scales`， and `g_idx`。 AutoRound keeps `algorithm： autoround` 来源 while using the GPTQ ABI。 原生 GPTQ and AutoRound should not be documented as requiring `quantization_manifest.json` or `quantization_report.json` unless a specific exporter 独立 emits those files。"
+
+#: ../../source/reference/output-files.md:61
+msgid "Native AWQ output"
+msgstr "原生 AWQ 输出"
+
+#: ../../source/reference/output-files.md:63
+msgid "Native AWQ GEMM output primarily contains:"
+msgstr "原生 AWQ GEMM 输出 primarily 包含："
+
+#: ../../source/reference/output-files.md:74
+msgid ""
+"The native tensors include `qweight`, `qzeros`, and `scales`. Native AWQ "
+"uses `quant_config.json`, not `quantize_config.json`. Native AWQ should "
+"not be documented as requiring the compressed-tensors manifest or "
+"execution report."
+msgstr "The 原生 tensors 包含 `qweight`， `qzeros`， and `scales`。 原生 AWQ 使用 `quant_config.json`， not `quantize_config.json`。 原生 AWQ should not be documented as requiring the compressed-tensors manifest or execution report。"
+
+#: ../../source/reference/output-files.md:76
+msgid "Core files"
+msgstr "核心文件"
+
+#: ../../source/reference/output-files.md:78
+msgid "config.json"
+msgstr "config.json"
+
+#: ../../source/reference/output-files.md:80
+msgid ""
+"Model configuration and, for supported formats, the runtime quantization "
+"declaration. A compressed-tensors example is:"
+msgstr "Model 配置 and， for supported 格式， the 运行时 量化 declaration。 A compressed-tensors 示例 is："
+
+#: ../../source/reference/output-files.md:91
+msgid ""
+"Native GPTQ, AutoRound, and AWQ configurations use the method-specific "
+"metadata expected by the target loader."
+msgstr "原生 GPTQ， AutoRound， and AWQ configurations use the 方法-specific 元数据 expected by the 目标 loader。"
+
+#: ../../source/reference/output-files.md:93
+msgid "model.safetensors.index.json"
+msgstr "model.safetensors.index.json"
+
+#: ../../source/reference/output-files.md:95
+msgid ""
+"The weight shard index. Every tensor referenced by the index must exist "
+"in one of the referenced shard files."
+msgstr "The 权重 shard index。 Every tensor referenced by the index 必须 exist in one of the referenced shard files。"
+
+#: ../../source/reference/output-files.md:97
+msgid "model-*.safetensors"
+msgstr "model-*.safetensors"
+
+#: ../../source/reference/output-files.md:99
+msgid ""
+"Standard model weight shards used by the indexed compressed-tensors and "
+"conversion paths when emitted with that naming convention."
+msgstr "标准 model 权重 分片 used by the 带索引的 compressed-tensors and 转换 paths when emitted with that naming convention。"
+
+#: ../../source/reference/output-files.md:101
+msgid "model.safetensors"
+msgstr "model.safetensors"
+
+#: ../../source/reference/output-files.md:103
+msgid ""
+"A single-file safetensors weight file used instead of an index and shard "
+"set when the output is not sharded."
+msgstr "A single-file safetensors 权重 file used instead of an index and shard set when the 输出 is not 分片的。"
+
+#: ../../source/reference/output-files.md:105
+msgid "Conversion-specific files"
+msgstr "转换专用文件"
+
+#: ../../source/reference/output-files.md:107
+msgid "conversion_report.json"
+msgstr "conversion_report.json"
+
+#: ../../source/reference/output-files.md:109
+msgid ""
+"BF16 conversion output can include `conversion_report.json`, which "
+"records conversion statistics, recognized source formats, processing "
+"time, requested and actual backends, and fallback events when reported by"
+" the conversion path."
+msgstr "BF16 转换 输出 can 包含 `conversion_report.json`， which records 转换 statistics， 已识别的 源 格式， processing time， requested and actual backends， and 回退 events when reported by the 转换 路径。"
+
+#: ../../source/reference/output-files.md:111
+msgid "Publishing requirements"
+msgstr "发布要求"
+
+#: ../../source/reference/output-files.md:114
+msgid ""
+"Copy the entire output directory rather than only `.safetensors` files. "
+"Preserve configuration, index or single-file weights, method metadata, "
+"quantization metadata, and supporting tokenizer files when they are "
+"present."
+msgstr "Copy the entire 输出 目录 rather than 仅 `.safetensors` files。 Preserve 配置， index or single-file 权重， 方法 元数据， 量化 元数据， and supporting tokenizer files when they are present。"
+
+#: ../../source/reference/output-files.md:117
+msgid "For compressed-tensors output, preserve:"
+msgstr "For compressed-tensors 输出， preserve："
+
+#: ../../source/reference/output-files.md:128
+msgid ""
+"For native GPTQ or AutoRound, preserve `config.json`, "
+"`quantize_config.json`, the native index or single-file weights, native "
+"shards, and tokenizer files when present. For native AWQ, preserve "
+"`config.json`, `quant_config.json`, native weights, and tokenizer files "
+"when present. For BF16 conversion, preserve `conversion_report.json` when"
+" emitted."
+msgstr "For 原生 GPTQ or AutoRound， preserve `config.json`， `quantize_config.json`， the 原生 index or single-file 权重， 原生 分片， and tokenizer files when present。 For 原生 AWQ， preserve `config.json`， `quant_config.json`， 原生 权重， and tokenizer files when present。 For BF16 转换， preserve `conversion_report.json` when emitted。"
+
+#: ../../source/reference/output-files.md:130
+msgid "Size comparison"
+msgstr "大小比较"
+
+#: ../../source/reference/output-files.md:141
+msgid "File descriptions"
+msgstr "文件说明"
+
+#: ../../source/reference/output-files.md:113
+msgid "File"
+msgstr "文件"
+
+#: ../../source/reference/output-files.md:113
+msgid "Format"
+msgstr "格式"
+
+#: ../../source/reference/output-files.md:113
+msgid "Purpose"
+msgstr "用途"
+
+#: ../../source/reference/output-files.md:113
+msgid "`config.json`"
+msgstr "`config.json`"
+
+#: ../../source/reference/output-files.md:113
+msgid "JSON"
+msgstr "JSON"
+
+#: ../../source/reference/output-files.md:113
+msgid "Model and runtime configuration"
+msgstr "模型和运行时配置"
+
+#: ../../source/reference/output-files.md:113
+msgid "`model.safetensors.index.json`"
+msgstr "`model.safetensors.index.json`"
+
+#: ../../source/reference/output-files.md:113
+msgid "Indexed shard map"
+msgstr "带索引的分片映射"
+
+#: ../../source/reference/output-files.md:113
+msgid "`model.safetensors`"
+msgstr "`model.safetensors`"
+
+#: ../../source/reference/output-files.md:113
+msgid "Safetensors"
+msgstr "Safetensors"
+
+#: ../../source/reference/output-files.md:113
+msgid "Single-file weight data"
+msgstr "单文件权重数据"
+
+#: ../../source/reference/output-files.md:113
+msgid "`model-*.safetensors`"
+msgstr "`model-*.safetensors`"
+
+#: ../../source/reference/output-files.md:113
+msgid "Standard weight shards when emitted"
+msgstr "生成时的标准权重分片"
+
+#: ../../source/reference/output-files.md:113
+msgid "Compressed-tensors quantization metadata"
+msgstr "compressed-tensors 量化元数据"
+
+#: ../../source/reference/output-files.md:113
+msgid "Compressed-tensors processing report"
+msgstr "compressed-tensors 处理报告"
+
+#: ../../source/reference/output-files.md:113
+msgid "`conversion_report.json`"
+msgstr "`conversion_report.json`"
+
+#: ../../source/reference/output-files.md:113
+msgid "BF16 conversion report when emitted"
+msgstr "生成时的 BF16 转换报告"
+
+#: ../../source/reference/output-files.md:113
+msgid "`quantize_config.json`"
+msgstr "`quantize_config.json`"
+
+#: ../../source/reference/output-files.md:113
+msgid "Native GPTQ or AutoRound configuration"
+msgstr "原生 GPTQ 或 AutoRound 配置"
+
+#: ../../source/reference/output-files.md:113
+msgid "`quant_config.json`"
+msgstr "`quant_config.json`"
+
+#: ../../source/reference/output-files.md:113
+msgid "Native AWQ configuration"
+msgstr "原生 AWQ 配置"
+
+#: ../../source/reference/output-files.md:113
+msgid "`tokenizer.json`"
+msgstr "`tokenizer.json`"
+
+#: ../../source/reference/output-files.md:113
+msgid "Tokenizer data when present"
+msgstr "存在时的分词器数据"
+
+#: ../../source/reference/output-files.md:113
+msgid "`tokenizer_config.json`"
+msgstr "`tokenizer_config.json`"
+
+#: ../../source/reference/output-files.md:113
+msgid "Tokenizer settings when present"
+msgstr "存在时的分词器设置"
+
+#: ../../source/reference/output-files.md:113
+msgid "`special_tokens_map.json`"
+msgstr "`special_tokens_map.json`"
+
+#: ../../source/reference/output-files.md:113
+msgid "Special token settings when present"
+msgstr "存在时的特殊词元设置"
+
