@@ -37,9 +37,24 @@ def build_parser() -> argparse.ArgumentParser:
     quantize.add_argument("--input", required=True)
     quantize.add_argument("--output", required=True)
     quantize.add_argument("--recipe")
-    quantize.add_argument("--select", action="append", choices=sorted(BUILTIN_SELECTIONS))
+    quantize.add_argument(
+        "--select",
+        action="append",
+        nargs="+",
+        metavar=("TARGET[=WEIGHT_FORMAT]", "KEY=VALUE"),
+        help=(
+            "Select a built-in target. For mixed quantization, append local "
+            "settings using existing option names, for example: --select "
+            "moe=int4 activation-bits=16 strategy=group group-size=32."
+        ),
+    )
     quantize.add_argument("--exclude", action="append", choices=sorted(BUILTIN_SELECTIONS))
-    quantize.add_argument("--select-name", action="append", metavar="REGEX")
+    quantize.add_argument(
+        "--select-name",
+        action="append",
+        nargs="+",
+        metavar=("REGEX[=WEIGHT_FORMAT]", "KEY=VALUE"),
+    )
     quantize.add_argument("--exclude-name", action="append", metavar="REGEX")
     quantize.add_argument("--bits", type=int, choices=[4, 8], default=None)
     quantize.add_argument(
@@ -62,6 +77,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--strategy",
         choices=["group", "channel"],
         default=None,
+        help="Weight granularity: groupwise or per-channel.",
     )
     quantize.add_argument(
         "--method",

@@ -52,7 +52,8 @@ _COMPACT_TARGETS = {
         r"re:^.*\.(?:self_attn|attention|attn)\..*"
         r"(?:q_proj|k_proj|v_proj|o_proj|out_proj|query|key|value|dense|"
         r"c_attn|c_proj|qkv_proj|query_key_value|wq|wk|wv|wo|wq_a|wq_b|"
-        r"wkv_a|wkv_b|kv_a_proj_with_mqa|kv_b_proj|q_a_proj|q_b_proj)$"
+        r"wkv|wkv_a|wkv_b|wo_a|wo_b|kv_a_proj_with_mqa|kv_b_proj|"
+        r"kv_proj|q_a_proj|q_b_proj|o_b_proj)$"
     ),
     "mlp": (
         r"re:^.*\.mlp\."
@@ -127,9 +128,31 @@ def validate_fusion_closure(
     selected = set(selected_logical_weights)
     errors: list[str] = []
 
+    # DeepSeek-V4 constructs this fused state-compressor projection with
+    # quant_config=None in vLLM. Packed integer source tensors therefore have
+    # no matching runtime parameters (for example ``weight_packed``), even if
+    # both source halves are selected. Keep the pair in BF16 until that runtime
+    # module supports a quantization config.
+    unsupported_compressor = sorted(
+        name
+        for name in selected
+        if name.endswith(
+            (".compressor.wkv.weight", ".compressor.wgate.weight")
+        )
+    )
+    if unsupported_compressor:
+        errors.append(
+            "DeepSeek-V4 compressor wkv/wgate must remain BF16 because the "
+            "vLLM fused_wkv_wgate runtime module does not accept a quantization "
+            "config: "
+            + ", ".join(unsupported_compressor[:4])
+        )
+
     paired_suffixes = (
         (".gate_proj.weight", ".up_proj.weight"),
+        (".w1.weight", ".w3.weight"),
         (".q_a_proj.weight", ".kv_a_proj_with_mqa.weight"),
+        (".wq_a.weight", ".wkv.weight"),
         (".wk.weight", ".weights_proj.weight"),
     )
     visited_pairs: set[frozenset[str]] = set()
@@ -185,6 +208,7 @@ def build_compressed_tensors_config(
     strategy: str = "group",
     group_size: int | None = None,
     ignore_modules: Iterable[str] = (),
+    additional_targets: Iterable[str] = (),
 ) -> dict:
     if num_bits not in (4, 8):
         raise ValueError(f"num_bits must be 4 or 8, got {num_bits}")
@@ -207,6 +231,9 @@ def build_compressed_tensors_config(
     validate_fusion_closure(all_logical_weights, selected_logical_weights)
     targets = compile_compressed_tensors_targets(
         all_logical_weights, selected_logical_weights
+    )
+    targets.extend(
+        target for target in sorted(set(additional_targets)) if target not in targets
     )
     if not targets:
         raise ValueError("Cannot build compressed-tensors config without targets")
@@ -248,13 +275,15 @@ def build_compressed_tensors_config(
             "symmetric": True,
             "dynamic": True,
         }
+    compression_format = (
+        "int-quantized"
+        if activation_num_bits == 8
+        else "pack-quantized"
+    )
+    group["format"] = compression_format
     return {
         "quant_method": "compressed-tensors",
-        "format": (
-            "int-quantized"
-            if activation_num_bits == 8
-            else "pack-quantized"
-        ),
+        "format": compression_format,
         "quantization_status": "compressed",
         "config_groups": {
             group_name: group,

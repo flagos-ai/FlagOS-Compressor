@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import replace
 
 from flagos_compressor.core.compressed_tensors import validate_fusion_closure
 from flagos_compressor.core.moe_layout import MoeLayout
@@ -278,6 +279,8 @@ def build_quantize_plan(
     policy: QuantizationPolicy,
     moe_layout: MoeLayout | None = None,
 ) -> ExecutionPlan:
+    if policy.target_scheme_rules:
+        return build_per_selector_plan(profile, policy, moe_layout)
     plan = ExecutionPlan(
         metadata={
             "command": "quantize",
@@ -287,6 +290,7 @@ def build_quantize_plan(
                 "format": policy.unselected.format,
             },
             "algorithm": {
+                "mode": "uniform",
                 "name": (
                     "mse_grid_search"
                     if policy.method == "mse"
@@ -412,6 +416,157 @@ def build_quantize_plan(
         ),
     )
     _validate_fused_bank_closure(profile, selected_banks)
+    return plan
+
+
+def build_per_selector_plan(
+    profile: ModelProfile,
+    policy: QuantizationPolicy,
+    moe_layout: MoeLayout | None = None,
+) -> ExecutionPlan:
+    """Build one artifact from ordered selector-local quantization rules."""
+    if not policy.target_scheme_rules:
+        raise ValueError("build_per_selector_plan requires target_scheme_rules")
+    if policy.method != "mse":
+        raise ValueError("Per-selector formats currently require MSE")
+
+    plan = ExecutionPlan(
+        metadata={
+            "command": "quantize",
+            "artifact_kind": "compressed_tensors",
+            "unselected_weights": {
+                "strategy": policy.unselected.strategy,
+                "format": policy.unselected.format,
+            },
+            "algorithm": {
+                "name": "per_selector_mse_grid_search",
+                "mode": "per_selector",
+                "n_candidates": policy.n_candidates,
+                "rules": [
+                    {
+                        "selector": rule.label,
+                        "scheme": rule.scheme,
+                        "num_bits": rule.num_bits,
+                        "activation_num_bits": rule.activation_num_bits,
+                        "strategy": rule.strategy,
+                        "group_size": rule.group_size,
+                        "chunk_size": rule.chunk_size,
+                        "scale_dtype": (
+                            rule.scale_dtype if rule.is_w8a8 else "bfloat16"
+                        ),
+                    }
+                    for rule in policy.target_scheme_rules
+                ],
+            },
+        }
+    )
+
+    selected_by_scheme: dict[tuple[str, int | None], list[str]] = defaultdict(list)
+    selected_banks_by_scheme: dict[
+        tuple[str, int | None], list[TensorInfo]
+    ] = defaultdict(list)
+    for tensor in profile.tensors.values():
+        if tensor.role != "weight":
+            continue
+        rule = policy.target_scheme_rule_for(tensor)
+        if rule is None:
+            _plan_unselected_weight(plan, tensor, policy.unselected)
+            continue
+
+        assert rule.chunk_size is not None
+        num_bits = rule.num_bits
+        group_size = rule.group_size
+        scheme = (rule.scheme, group_size)
+        effective_policy = replace(
+            policy,
+            target_scheme_rules=(),
+            num_bits=num_bits,
+            activation_num_bits=rule.activation_num_bits,
+            scale_dtype=rule.scale_dtype or "float32",
+            strategy=rule.strategy,
+            group_size=group_size,
+            chunk_size=rule.chunk_size,
+        )
+        proj_kind = _fused_expert_proj_kind(tensor)
+        if _is_fused_moe_expert(tensor):
+            if moe_layout is None:
+                raise ValueError(
+                    f"Selected fused routed-expert bank {tensor.name!r} "
+                    "requires a MoeLayout"
+                )
+            _plan_fused_moe_expert(
+                plan,
+                tensor,
+                effective_policy,
+                proj_kind,
+                moe_layout,
+            )
+            selected_banks_by_scheme[scheme].append(tensor)
+            continue
+
+        input_format = _input_format_for(tensor)
+        if input_format is None:
+            raise ValueError(
+                f"Scheme selector {rule.label!r} selected unsupported tensor "
+                f"{tensor.name!r} (dtype={tensor.dtype}, "
+                f"storage_format={tensor.storage_format}, shape={tensor.shape})"
+            )
+        logical_shape = tensor.effective_logical_shape
+        if len(logical_shape) != 2:
+            raise ValueError(
+                f"Per-selector input {tensor.name!r} has logical shape "
+                f"{logical_shape}; expected a 2D weight"
+            )
+        if rule.strategy == "group" and (
+            group_size is None or logical_shape[1] % group_size
+        ):
+            raise ValueError(
+                f"Per-selector input {tensor.name!r} has in_features="
+                f"{logical_shape[1]}; must be divisible by group_size={group_size}"
+            )
+        if num_bits == 4 and logical_shape[1] % 8:
+            raise ValueError(
+                f"Per-selector input {tensor.name!r} has in_features="
+                f"{logical_shape[1]}; INT4 pack-quantized storage requires "
+                "in_features divisible by 8"
+            )
+        if rule.is_w8a8:
+            output_format = "compressed_tensors_w8a8_channelwise"
+        elif rule.strategy == "channel":
+            output_format = "compressed_tensors_int8_channelwise"
+        else:
+            output_format = f"compressed_tensors_int{num_bits}_groupwise"
+        plan.add_action(
+            tensor,
+            input_format=input_format,
+            output_format=FormatSpec(
+                output_format,
+                {
+                    "quantizer": "mse",
+                    "num_bits": num_bits,
+                    "activation_num_bits": rule.activation_num_bits,
+                    "scale_dtype": (
+                        rule.scale_dtype if rule.is_w8a8 else "bfloat16"
+                    ),
+                    "strategy": rule.strategy,
+                    "group_size": group_size,
+                    "n_candidates": policy.n_candidates,
+                    "chunk_size": rule.chunk_size,
+                },
+            ),
+            rule_name=f"selected_{rule.label}_{rule.scheme}",
+        )
+        selected_by_scheme[scheme].append(tensor.name)
+
+    all_logical_weights = [
+        tensor.name
+        for tensor in profile.tensors.values()
+        if tensor.role == "weight" and tensor.name.endswith(".weight")
+    ]
+    for selected in selected_by_scheme.values():
+        validate_fusion_closure(all_logical_weights, selected)
+    for selected_banks in selected_banks_by_scheme.values():
+        _validate_fused_bank_closure(profile, selected_banks)
     return plan
 
 

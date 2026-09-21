@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 
 from tqdm import tqdm
 
@@ -155,6 +156,72 @@ def _ignore_modules(plan: ExecutionPlan) -> set[str]:
     return ignore
 
 
+def _deepseek_v4_runtime_targets(
+    config: dict,
+    selected_logical_weights: set[str],
+) -> set[str]:
+    """Return runtime aliases for source projections fused by DeepSeek-V4.
+
+    The HF checkpoint stores ``wq_a``/``wkv`` and shared-expert ``w1``/``w3``
+    separately, while vLLM instantiates ``fused_wqa_wkv`` and ``gate_up_proj``.
+    compressed-tensors matches its config against those runtime module names,
+    so both source projections must select the corresponding fused alias.
+    """
+    text_config = config.get("text_config") or {}
+    model_type = config.get("model_type") or text_config.get("model_type")
+    if model_type != "deepseek_v4":
+        return set()
+
+    modules = {
+        name[: -len(".weight")]
+        for name in selected_logical_weights
+        if name.endswith(".weight")
+    }
+    aliases: set[str] = set()
+    for module in modules:
+        if module.endswith(".wq_a"):
+            prefix = module[: -len(".wq_a")]
+            if f"{prefix}.wkv" in modules:
+                aliases.add(f"{prefix}.fused_wqa_wkv")
+        if module.endswith(".shared_experts.w1"):
+            prefix = module[: -len(".w1")]
+            if f"{prefix}.w3" in modules:
+                aliases.add(f"{prefix}.gate_up_proj")
+        if module.endswith(".shared_experts.w2"):
+            aliases.add(module[: -len(".w2")] + ".down_proj")
+    return aliases
+
+
+def _routed_moe_runtime_targets(
+    selected_logical_weights: set[str],
+) -> set[str]:
+    """Map per-bank expert names to vLLM's unfused projection lookups."""
+    pattern = re.compile(
+        r"^(?P<bank>.*\.experts)\.\d+\."
+        r"(?:gate_proj|up_proj|down_proj|w1|w2|w3)\.weight$"
+    )
+    targets: set[str] = set()
+    for name in selected_logical_weights:
+        match = pattern.match(name)
+        if match is None:
+            continue
+        parts = match.group("bank").split(".")
+        while len(parts) > 1 and parts[0] in {
+            "model",
+            "language_model",
+            "visual",
+            "vision_model",
+        }:
+            parts.pop(0)
+        bank = re.escape(".".join(parts))
+        targets.add(
+            r"re:^.*"
+            + bank
+            + r"\.\d+\.(?:gate_proj|up_proj|down_proj|w1|w2|w3)$"
+        )
+    return targets
+
+
 def _patch_compressed_tensors_config(
     output_path: Path,
     plan: ExecutionPlan,
@@ -167,17 +234,15 @@ def _patch_compressed_tensors_config(
     with config_path.open("r", encoding="utf-8") as f:
         config = json.load(f)
 
-    selected = {
-        action.tensor.name
-        for action in plan.actions
-        if action.output_format.name in _LINEAR_FORMAT_BITS
-    }
+    selected_by_scheme: dict[
+        tuple[int, int, str, int | None], set[str]
+    ] = {}
     for action in plan.actions:
-        if action.output_format.name in _FUSED_MOE_FORMAT_BITS:
-            selected.update(_fused_expert_logical_weights(action))
-    schemes = {
-        (
-            _QUANTIZED_FORMAT_BITS[action.output_format.name],
+        output_name = action.output_format.name
+        if output_name not in _QUANTIZED_FORMAT_BITS:
+            continue
+        scheme = (
+            _QUANTIZED_FORMAT_BITS[output_name],
             int(action.output_format.params.get("activation_num_bits", 16)),
             action.output_format.params.get("strategy", "group"),
             (
@@ -186,25 +251,52 @@ def _patch_compressed_tensors_config(
                 else None
             ),
         )
-        for action in plan.actions
-        if action.output_format.name in _QUANTIZED_FORMAT_BITS
-    }
-    if len(schemes) != 1:
-        raise ValueError(
-            "A compressed-tensors config group requires one weight/activation "
-            "bit width and weight "
-            f"strategy; found {sorted(schemes, key=str)}"
+        selected = selected_by_scheme.setdefault(scheme, set())
+        if output_name in _FUSED_MOE_FORMAT_BITS:
+            selected.update(_fused_expert_logical_weights(action))
+        else:
+            selected.add(action.tensor.name)
+    if not selected_by_scheme:
+        raise ValueError("Cannot export compressed-tensors without quantized weights")
+
+    all_logical_weights = _logical_weight_names(plan)
+    ignore_modules = _ignore_modules(plan)
+    quantization_config: dict | None = None
+    for scheme, selected in sorted(selected_by_scheme.items(), key=lambda item: str(item[0])):
+        num_bits, activation_num_bits, strategy, group_size = scheme
+        runtime_targets = _deepseek_v4_runtime_targets(config, selected)
+        runtime_targets.update(_routed_moe_runtime_targets(selected))
+        group_config = build_compressed_tensors_config(
+            all_logical_weights,
+            selected,
+            num_bits=num_bits,
+            activation_num_bits=activation_num_bits,
+            strategy=strategy,
+            group_size=group_size,
+            ignore_modules=ignore_modules,
+            additional_targets=runtime_targets,
         )
-    num_bits, activation_num_bits, strategy, group_size = next(iter(schemes))
-    quantization_config = build_compressed_tensors_config(
-        _logical_weight_names(plan),
-        selected,
-        num_bits=num_bits,
-        activation_num_bits=activation_num_bits,
-        strategy=strategy,
-        group_size=group_size,
-        ignore_modules=_ignore_modules(plan),
-    )
+        if quantization_config is None:
+            quantization_config = group_config
+            continue
+        if group_config["format"] != quantization_config["format"]:
+            quantization_config["format"] = "mixed-precision"
+        overlap = set(quantization_config["config_groups"]) & set(
+            group_config["config_groups"]
+        )
+        if overlap:
+            raise ValueError(
+                "Compressed-tensors config group collision: "
+                + ", ".join(sorted(overlap))
+            )
+        quantization_config["config_groups"].update(
+            group_config["config_groups"]
+        )
+        quantization_config["ignore"] = sorted(
+            set(quantization_config.get("ignore", ()))
+            | set(group_config.get("ignore", ()))
+        )
+    assert quantization_config is not None
 
     config["torch_dtype"] = "bfloat16"
     for key in (*_STRIP_CONFIG_KEYS, "expert_dtype"):
@@ -271,6 +363,8 @@ def _write_quantization_manifest(
                 ],
                 "shape": names.shape,
                 "num_bits": num_bits,
+                "activation_num_bits": 16,
+                "scale_dtype": "bfloat16",
                 "strategy": strategy,
                 "rule": action.rule_name,
             }
@@ -329,6 +423,8 @@ def _write_quantization_manifest(
                     ],
                     "shape": names.shape,
                     "num_bits": num_bits,
+                    "activation_num_bits": 16,
+                    "scale_dtype": "bfloat16",
                     "strategy": "group",
                     "group_size": group_size,
                     "rule": action.rule_name,
@@ -344,7 +440,6 @@ def _write_quantization_manifest(
                 "logical_shape": list(tensor.effective_logical_shape),
                 "rule": action.rule_name,
             }
-
     for tensor in plan.kept_tensors:
         if tensor.role == "weight":
             tensors[tensor.name] = {
@@ -356,78 +451,147 @@ def _write_quantization_manifest(
                 "kept_from_source": True,
             }
 
+    quantized_actions = [
+        action
+        for action in plan.actions
+        if action.output_format.name in _QUANTIZED_FORMAT_BITS
+    ]
     quantized_bits = {
         _QUANTIZED_FORMAT_BITS[action.output_format.name]
-        for action in plan.actions
-        if action.output_format.name in _QUANTIZED_FORMAT_BITS
+        for action in quantized_actions
     }
-    if len(quantized_bits) != 1:
-        raise ValueError(
-            f"Expected one quantized bit width, found {sorted(quantized_bits)}"
-        )
-    num_bits = next(iter(quantized_bits))
+    if not quantized_bits:
+        raise ValueError("Expected at least one quantized bit width")
+    sorted_bits = sorted(quantized_bits)
     quantized_strategies = {
         action.output_format.params.get("strategy", "group")
-        for action in plan.actions
-        if action.output_format.name in _QUANTIZED_FORMAT_BITS
+        for action in quantized_actions
     }
-    if len(quantized_strategies) != 1:
-        raise ValueError(
-            "Expected one quantized weight strategy, found "
-            f"{sorted(quantized_strategies)}"
-        )
-    strategy = next(iter(quantized_strategies))
+    single_strategy = (
+        next(iter(quantized_strategies))
+        if len(quantized_strategies) == 1
+        else None
+    )
     compression_formats = {
         (
             "int-quantized"
             if action.output_format.name in _INT_QUANTIZED_FORMATS
             else "pack-quantized"
         )
-        for action in plan.actions
-        if action.output_format.name in _QUANTIZED_FORMAT_BITS
+        for action in quantized_actions
     }
-    if len(compression_formats) != 1:
-        raise ValueError(
-            "Expected one compressed-tensors storage format, found "
-            f"{sorted(compression_formats)}"
-        )
-    compression_format = next(iter(compression_formats))
+    compression_format = (
+        next(iter(compression_formats))
+        if len(compression_formats) == 1
+        else "mixed-precision"
+    )
     is_int_quantized = compression_format == "int-quantized"
     scale_dtypes = {
-        action.output_format.params.get("scale_dtype", "float32")
-        for action in plan.actions
-        if action.output_format.name in _INT_QUANTIZED_FORMATS
+        action.output_format.params.get("scale_dtype", "bfloat16")
+        for action in quantized_actions
     }
-    if is_int_quantized and len(scale_dtypes) != 1:
-        raise ValueError(
-            "Expected one W8A8 scale dtype, found "
-            f"{sorted(scale_dtypes)}"
+    mixed_bits = len(sorted_bits) > 1
+    mixed_storage = len(compression_formats) > 1
+    schemes: dict[
+        tuple[str, int, int, str, int | None, str], dict
+    ] = {}
+    for action in quantized_actions:
+        output_name = action.output_format.name
+        num_bits = _QUANTIZED_FORMAT_BITS[output_name]
+        activation_num_bits = int(
+            action.output_format.params.get("activation_num_bits", 16)
         )
+        action_strategy = action.output_format.params.get("strategy", "group")
+        group_size = action.output_format.params.get("group_size")
+        scale_dtype = action.output_format.params.get(
+            "scale_dtype", "bfloat16"
+        )
+        storage_format = (
+            "int-quantized"
+            if output_name in _INT_QUANTIZED_FORMATS
+            else "pack-quantized"
+        )
+        key = (
+            storage_format,
+            num_bits,
+            activation_num_bits,
+            action_strategy,
+            group_size,
+            scale_dtype,
+        )
+        scheme = {
+            "scheme": f"int{num_bits}-a{activation_num_bits}",
+            "compression_format": storage_format,
+            "weight_encoding": (
+                "int8"
+                if storage_format == "int-quantized"
+                else ("uint4b8" if num_bits == 4 else "uint8b128")
+            ),
+            "num_bits": num_bits,
+            "activation_num_bits": activation_num_bits,
+            "strategy": action_strategy,
+            "group_size": group_size,
+            "scale_dtype": scale_dtype,
+        }
+        if storage_format == "pack-quantized":
+            scheme["values_per_word"] = 32 // num_bits
+        schemes[key] = scheme
     artifact = {
         "format": "compressed-tensors",
         "compression_format": compression_format,
         "weight_encoding": (
-            "int8"
-            if is_int_quantized
-            else ("uint4b8" if num_bits == 4 else "uint8b128")
+            "mixed"
+            if mixed_storage
+            else (
+                "int8"
+                if is_int_quantized
+                else (
+                    "mixed"
+                    if mixed_bits
+                    else ("uint4b8" if sorted_bits[0] == 4 else "uint8b128")
+                )
+            )
         ),
-        "num_bits": num_bits,
+        "num_bits": sorted_bits if mixed_bits else sorted_bits[0],
         "scale_dtype": (
-            next(iter(scale_dtypes)) if is_int_quantized else "bfloat16"
+            next(iter(scale_dtypes))
+            if len(scale_dtypes) == 1
+            else "mixed"
         ),
         "scale_layout": (
-            "row_channel" if strategy == "channel" else "row_group"
+            "mixed"
+            if len(quantized_strategies) > 1
+            else (
+                "row_channel"
+                if single_strategy == "channel"
+                else "row_group"
+            )
         ),
-        "strategy": strategy,
+        "strategy": (
+            single_strategy if single_strategy is not None else "mixed"
+        ),
+        "schemes": [schemes[key] for key in sorted(schemes, key=str)],
     }
-    if not is_int_quantized:
+    if mixed_storage:
+        artifact["compression_formats"] = sorted(compression_formats)
+        artifact["scale_dtypes"] = sorted(scale_dtypes)
+    elif not is_int_quantized:
         artifact.update(
             {
                 "pack_dtype": "int32",
                 "pack_axis": "input",
-                "values_per_word": 32 // num_bits,
+                "values_per_word": (
+                    {str(bits): 32 // bits for bits in sorted_bits}
+                    if mixed_bits
+                    else 32 // sorted_bits[0]
+                ),
             }
         )
+        if mixed_bits:
+            artifact["weight_encodings"] = {
+                str(bits): "uint4b8" if bits == 4 else "uint8b128"
+                for bits in sorted_bits
+            }
     manifest = {
         "schema": "flagos-compressor.provenance.v1",
         "producer": {"name": "FlagOS-Compressor"},

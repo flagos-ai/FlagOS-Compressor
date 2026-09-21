@@ -4,9 +4,10 @@ from __future__ import annotations
 ATTENTION_LINEAR_NAMES = {
     "q_proj", "k_proj", "v_proj", "o_proj", "out_proj", "query", "key",
     "value", "dense", "c_attn", "c_proj", "qkv_proj", "query_key_value",
-    "wq", "wk", "wv", "wo", "wq_a", "wq_b", "wkv_a", "wkv_b",
-    "kv_a_proj_with_mqa", "kv_b_proj", "kv_proj", "q_a_proj", "q_b_proj",
-    "o_b_proj",
+    "wq", "wk", "wv", "wo", "wq_a", "wq_b", "wkv", "wkv_a", "wkv_b",
+    "wo_a", "wo_b",
+    "kv_a_proj_with_mqa", "kv_b_proj", "q_a_proj", "q_b_proj",
+    "kv_proj", "o_b_proj",
     "in_proj_qkv", "in_proj_qkvz", "in_proj_ba", "in_proj_z", "in_proj_b",
     "in_proj_a",
 }
@@ -67,6 +68,14 @@ def classify_weight(name: str) -> tuple[str | None, tuple[str, ...]]:
     is_routed = "experts" in parts and not is_shared
     is_mlp_linear = leaf in MLP_LINEAR_NAMES
     is_attention_linear = leaf in ATTENTION_LINEAR_NAMES
+
+    # DeepSeek-V4's state compressor happens to use a ``wkv`` leaf, but vLLM
+    # instantiates ``compressor.wkv`` + ``compressor.wgate`` as one
+    # ``MergedColumnParallelLinear`` with ``quant_config=None``. Treating the
+    # nested ``wkv`` as an ordinary attention projection would quantize only
+    # half of that fused runtime module and produce an unloadable checkpoint.
+    if "compressor" in parts and leaf in {"wkv", "wgate"}:
+        return None, ()
 
     if is_mlp_linear or is_attention_linear:
         tags.add("linear")
