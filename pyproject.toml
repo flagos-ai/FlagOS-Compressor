@@ -24,6 +24,9 @@ official-autoround = ["auto-round"]
 [project.scripts]
 flagos-compressor = "flagos_compressor.cli.main:main"
 
+[project.entry-points."vllm.general_plugins"]
+flagos_source_formats = "flagos_compressor.integrations.vllm:register"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
