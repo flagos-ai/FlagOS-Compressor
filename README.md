@@ -23,6 +23,65 @@ Other PyTorch device extensions can be used by passing their registered device
 type and `--device`; they are accepted through the generic backend and are not
 counted among the five built-ins.
 
+## DeepSeek-V4.1 and MiMo-V2.5 INT8 checkpoints
+
+The scanner reads safetensors headers without loading weight data, including
+large Engram embedding shards. Source FP8 block sizes come from `config.json`;
+DeepSeek-V4.1 supports 32x32 linear blocks and 1x32 Engram embedding scales.
+MiMo-V2.5 fused QKV is decoded using each source TP chunk's scale grid, then
+reordered into contiguous Q, K, V rows before quantization. The source TP count
+is the global-attention KV-head count, including SWA layers with more KV heads.
+
+```bash
+flagos-compressor quantize \
+  --input /path/to/DeepSeek-V4.1-Flash \
+  --output /path/to/DeepSeek-V4.1-Flash-W8A8 \
+  --recipe examples/recipes/linear-int8-bf16-indexer.yaml \
+  --backend cuda
+```
+
+The same recipe accepts MiMo-V2.5. It selects attention, MoE, MLP, vision/audio
+and MTP projections recognized as linear weights. Indexers, state compressors,
+embeddings, norms, router parameters and output heads are excluded from INT8.
+The recipe decodes their source FP8/FP4 weights to BF16 and removes the source
+scales. Existing BF16 and FP32 parameters remain unchanged; INT8 weight scales
+remain FP32. Excluding an indexer from INT8 does not require retaining FP8 storage.
+The DeepSeek vision patch projection is Linear and is selected explicitly;
+MiMo's Conv3d patch projection is preserved. Large Engram tables are decoded
+in row chunks so a complete table need not fit in accelerator memory.
+
+MiMo exports also name the fused dense `gate_up_proj` in the runtime config.
+This is required by vLLM's Omni wrapper, which does not expose the language
+model's packed-module mapping; omitting it can silently load INT8 weights into
+an unquantized dense MLP and produce invalid text.
+
+The alternative `linear-int8-preserve-indexer.yaml` recipe explicitly sets
+`unselected: {strategy: preserve}` and copies excluded weights **and their scales**
+without conversion or renaming. Preserved quantized modules are recorded in
+`config.json` under `flagos_source_quantization` and in the manifest under
+`preserved_tensors`, together with the original quantization config and block
+layouts. The integer projections use the usual compressed-tensors contract.
+Loading the complete mixed-source artifact requires model-specific runtime
+support for the preserved modules; a stock compressed-tensors loader's
+`ignore` list alone does not implement their FP8 computation. Artifact validation
+checks storage consistency, not full-model runtime compatibility.
+
+For DeepSeek V4.1 text inference on the CUDA FlashMLA path, the optional
+`flagos_source_formats` vLLM plugin reads this contract. It dequantizes preserved
+FP8 indexer projections to BF16 at load time and routes grouped INT8 `wo_a`
+projections through compressed-tensors' linear kernel. The serialized indexer
+weights and scales remain unchanged. Enable it with
+`FLAGOS_COMPRESSOR_VLLM_SOURCE_FORMATS=1` and
+`VLLM_PLUGINS=flagos_source_formats`; this requires a vLLM build containing
+DeepSeek V4.1 support. The adapter does not implement other attention backends
+or multimodal inference. BF16 Engram exports carry `flagos_bf16_engram: true`;
+the same adapter allocates BF16 tables and gathers them directly, including
+TP-sharded CPU offload. It does not re-quantize the table. DP-shared host storage
+is not supported for BF16 Engram.
+
+The default unselected policy remains BF16 conversion. Use the explicit preserve
+recipe when exclusions must retain their original precision.
+
 ## Inspect
 
 ```bash
@@ -393,10 +452,11 @@ Recipe fields:
 - `exclude` (list): tensors to skip, same shape as `select`. Applied on top of
   the `select` set. Mirrors `--exclude` / `--exclude-name`.
 - `unselected` (mapping): how source-quantized weights outside the selected set
-  are handled. Currently only `strategy: convert` (default) with
-  `format: bf16` is supported; it dequantizes low-precision weights to BF16.
-  `strategy: preserve` is reserved for a future runtime-compatible mixed-format
-  exporter and is rejected for now.
+  are handled. `strategy: convert` (default) with `format: bf16` dequantizes
+  low-precision weights to BF16. `strategy: preserve` copies their original
+  weights and scales and records the source-format contract. Preserve is
+  supported by direct RTN/MSE conversion; calibration-based GPTQ, AWQ and
+  AutoRound require BF16 conversion and reject preserve.
 
 Outside per-selector mode, CLI flags and recipe fields are additive: `select`
 and `exclude` entries from the recipe are merged with the corresponding CLI

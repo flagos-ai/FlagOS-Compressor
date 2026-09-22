@@ -1,0 +1,15 @@
+version: 1
+method: mse
+bits: 8
+activation_bits: 8
+strategy: channel
+scale_dtype: fp32
+n_candidates: 200
+select:
+  - linear
+  - name: '^vision\.patch_embed\.proj\.weight$'
+exclude:
+  - name: '(^|\.)indexer(\.|$)'
+unselected:
+  strategy: convert
+  format: bf16
