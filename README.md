@@ -50,6 +50,11 @@ The DeepSeek vision patch projection is Linear and is selected explicitly;
 MiMo's Conv3d patch projection is preserved. Large Engram tables are decoded
 in row chunks so a complete table need not fit in accelerator memory.
 
+MiMo exports also name the fused dense `gate_up_proj` in the runtime config.
+This is required by vLLM's Omni wrapper, which does not expose the language
+model's packed-module mapping; omitting it can silently load INT8 weights into
+an unquantized dense MLP and produce invalid text.
+
 The alternative `linear-int8-preserve-indexer.yaml` recipe explicitly sets
 `unselected: {strategy: preserve}` and copies excluded weights **and their scales**
 without conversion or renaming. Preserved quantized modules are recorded in

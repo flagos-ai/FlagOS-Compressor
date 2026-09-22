@@ -77,6 +77,34 @@ def _mimo_config():
     }
 
 
+@pytest.mark.parametrize("selected", ["linear", "attention"])
+def test_mimo_export_marks_fused_dense_mlp_only_when_selected(tmp_path, selected):
+    source, output = tmp_path / "source", tmp_path / "output"
+    source.mkdir()
+    state = {
+        f"{prefix}.{projection}.weight": torch.ones(16, 16, dtype=torch.bfloat16)
+        for prefix in ("model.layers.0.mlp", "model.mtp.layers.0.mlp")
+        for projection in ("gate_proj", "up_proj", "down_proj")
+    }
+    state["model.layers.0.self_attn.o_proj.weight"] = torch.ones(
+        16, 16, dtype=torch.bfloat16
+    )
+    save_file(state, source / "model.safetensors")
+    (source / "config.json").write_text(json.dumps({"model_type": "mimo_v2"}))
+    policy = QuantizationPolicy(
+        selections=(selected,), num_bits=8, activation_num_bits=8,
+        strategy="channel", n_candidates=8,
+    )
+    plan = build_quantize_plan(scan_hf_safetensors(source), policy)
+    execute_plan(source, output, plan, build_backend("cpu"))
+    config = json.loads((output / "config.json").read_text())
+    groups = config["quantization_config"]["config_groups"].values()
+    targets = {target for group in groups for target in group["targets"]}
+    for prefix in ("model.layers.0.mlp", "model.mtp.layers.0.mlp"):
+        assert (prefix + ".gate_up_proj" in targets) == (selected == "linear")
+    assert validate_artifact(output)["valid"]
+
+
 @pytest.mark.parametrize(
     "name",
     [

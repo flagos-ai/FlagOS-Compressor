@@ -204,6 +204,29 @@ def _deepseek_v4_runtime_targets(
     return aliases
 
 
+def _mimo_runtime_targets(
+    config: dict,
+    selected_logical_weights: set[str],
+) -> set[str]:
+    """Describe MiMo's fused dense MLP without relying on a runtime mapper.
+
+    The vLLM Omni wrapper does not expose its language model's packed-module
+    mapping. Without an explicit gate_up_proj target, compressed-tensors can
+    silently load the selected INT8 gate/up weights into an unquantized layer.
+    Only fuse projections selected by the same quantization scheme.
+    """
+    if config.get("model_type") != "mimo_v2":
+        return set()
+    aliases = set()
+    for name in selected_logical_weights:
+        if not name.endswith(".mlp.gate_proj.weight"):
+            continue
+        prefix = name[: -len("gate_proj.weight")]
+        if prefix + "up_proj.weight" in selected_logical_weights:
+            aliases.add(prefix + "gate_up_proj")
+    return aliases
+
+
 def _routed_moe_runtime_targets(
     selected_logical_weights: set[str],
 ) -> set[str]:
@@ -277,6 +300,7 @@ def _patch_compressed_tensors_config(
     for scheme, selected in sorted(selected_by_scheme.items(), key=lambda item: str(item[0])):
         num_bits, activation_num_bits, strategy, group_size = scheme
         runtime_targets = _deepseek_v4_runtime_targets(config, selected)
+        runtime_targets.update(_mimo_runtime_targets(config, selected))
         runtime_targets.update(_routed_moe_runtime_targets(selected))
         group_config = build_compressed_tensors_config(
             all_logical_weights,
