@@ -171,6 +171,29 @@ per-token INT8 activations. Fused routed-expert banks are expanded to the standa
 W8A8 requires `--bits 8 --strategy channel`; `--group-size` is not accepted.
 Use `--scale-dtype bf16` to emit BF16 `weight_scale` tensors.
 
+Source checkpoints may also contain row-group MXFP8 (E4M3 weights with one
+E8M0 scale per 32 values) and compressed-tensors NVFP4 (packed E2M1 weights,
+E4M3 scales per 16 values, and a scalar `weight_global_scale`). NVFP4 decoding
+divides by the stored global weight scale. Its activation scale is discarded
+when exporting a new quantization scheme. Packed expert names are mapped to
+logical `.weight` names for selection and export. Unselected source-quantized
+weights are decoded to BF16, including their logical name conversion.
+
+For large checkpoints with all weight/scale pairs contained within individual
+shards, `examples/parallel_w8a8.py` runs the same MSE quantizer on multiple GPUs
+and combines the completed shards into one artifact:
+
+```bash
+PYTHONPATH=src python examples/parallel_w8a8.py \
+  --input /path/to/source --output /path/to/new-w8a8 \
+  --work-dir /path/to/new-run-records --gpus 0,1,2,3,4,5,6,7
+```
+
+The output and work directories must be new. An `_INCOMPLETE` marker remains
+until all shards, the index, runtime config, and provenance have been written.
+The script selects `linear` by default; use repeated `--include-name` and
+`--exclude-name` regex arguments to adjust the selection.
+
 For fused MoE model types without a registered layout adapter, the CLI can
 infer the 3D bank order from a consistent `gate_up_proj` / `down_proj` pair:
 `[E, 2I, H]` plus `[E, H, I]` is treated as `[E, out, in]`, while
@@ -426,7 +449,7 @@ runtime quantization config, and native GPTQ/AWQ tensor layouts.
 ## Current scope
 
 - Sharded HuggingFace safetensors.
-- MXFP4, block FP8, and floating-point input weights.
+- MXFP4, block FP8, row-group MXFP8, NVFP4, and floating-point input weights.
 - Weight-only symmetric groupwise MSE INT4.
 - Weight-only symmetric groupwise MSE INT8.
 - Weight-only symmetric per-channel MSE INT8 for non-routed Linear weights.

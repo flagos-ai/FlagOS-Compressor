@@ -367,7 +367,7 @@ class QuantizationPolicy:
     def selects(self, tensor: TensorInfo) -> bool:
         if tensor.role != "weight":
             return False
-        return self.selects_name(tensor.name, tensor.tags)
+        return self.selects_name(tensor.effective_name, tensor.tags)
 
     def selects_name(self, name: str, tags: tuple[str, ...]) -> bool:
         """Apply the selector contract to a live Transformers module weight."""
@@ -400,13 +400,13 @@ class QuantizationPolicy:
             for item in self.exclude_selections
         ):
             return None
-        if any(re.search(pattern, tensor.name) for pattern in self.exclude_names):
+        if any(re.search(pattern, tensor.effective_name) for pattern in self.exclude_names):
             return None
         return next(
             (
                 rule
                 for rule in reversed(self.target_scheme_rules)
-                if rule.matches_name(tensor.name, tags)
+                if rule.matches_name(tensor.effective_name, tags)
             ),
             None,
         )
