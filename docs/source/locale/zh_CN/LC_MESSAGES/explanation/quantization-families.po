@@ -1,0 +1,340 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/explanation/quantization-families.md:1
+msgid "Quantization families"
+msgstr "量化类别"
+
+#: ../../source/explanation/quantization-families.md:3
+msgid ""
+"FlagOS-Compressor separates the quantization method, weight and "
+"activation bit widths, strategy, and output ABI. Select these as one "
+"policy and validate the resulting artifact in the target runtime."
+msgstr "FlagOS-Compressor 将量化方法、权重和激活位宽、策略以及输出 ABI 分开。请将它们作为一个策略选择，并在目标运行时验证生成的构件。"
+
+#: ../../source/explanation/quantization-families.md:5
+msgid "Output schemes"
+msgstr "输出方案"
+
+#: ../../source/explanation/quantization-families.md
+msgid "Scheme"
+msgstr "方案"
+
+#: ../../source/explanation/quantization-families.md
+msgid "Weights"
+msgstr "权重"
+
+#: ../../source/explanation/quantization-families.md
+msgid "Activations"
+msgstr "激活"
+
+#: ../../source/explanation/quantization-families.md
+msgid "Valid strategy"
+msgstr "有效策略"
+
+#: ../../source/explanation/quantization-families.md
+msgid "Typical use"
+msgstr "典型用途"
+
+#: ../../source/explanation/quantization-families.md
+msgid "BF16"
+msgstr "BF16"
+
+#: ../../source/explanation/quantization-families.md
+msgid "None"
+msgstr "无"
+
+#: ../../source/explanation/quantization-families.md
+msgid "Float baseline after conversion"
+msgstr "转换后的浮点基线"
+
+#: ../../source/explanation/quantization-families.md
+msgid "W4A16"
+msgstr "W4A16"
+
+#: ../../source/explanation/quantization-families.md
+msgid "INT4"
+msgstr "INT4"
+
+#: ../../source/explanation/quantization-families.md
+msgid "16-bit"
+msgstr "16-bit"
+
+#: ../../source/explanation/quantization-families.md
+msgid "Group"
+msgstr "分组"
+
+#: ../../source/explanation/quantization-families.md
+msgid "High weight compression candidate"
+msgstr "高权重压缩候选"
+
+#: ../../source/explanation/quantization-families.md
+msgid "W8A16 group"
+msgstr "W8A16 group"
+
+#: ../../source/explanation/quantization-families.md
+msgid "INT8"
+msgstr "INT8"
+
+#: ../../source/explanation/quantization-families.md
+msgid "Conservative weight-only baseline"
+msgstr "保守的仅权重量化基线"
+
+#: ../../source/explanation/quantization-families.md
+msgid "W8A16 channel"
+msgstr "W8A16 channel"
+
+#: ../../source/explanation/quantization-families.md
+msgid "Output channel"
+msgstr "输出通道"
+
+#: ../../source/explanation/quantization-families.md
+msgid "Ordinary Linear and attention-only tests"
+msgstr "普通 Linear 和仅注意力测试"
+
+#: ../../source/explanation/quantization-families.md
+msgid "W8A8"
+msgstr "W8A8"
+
+#: ../../source/explanation/quantization-families.md
+msgid "Dynamic per-token INT8"
+msgstr "动态逐 token INT8"
+
+#: ../../source/explanation/quantization-families.md
+msgid "Channel"
+msgstr "通道"
+
+#: ../../source/explanation/quantization-families.md
+msgid "Weight and activation INT8 testing"
+msgstr "权重和激活 INT8 测试"
+
+#: ../../source/explanation/quantization-families.md:15
+msgid ""
+"Weight compression does not reduce KV cache, workspace, communication "
+"buffers, graph capture, or framework overhead proportionally."
+msgstr "权重压缩不会按比例减少 KV cache、工作区、通信缓冲区、图捕获或框架开销。"
+
+#: ../../source/explanation/quantization-families.md:17
+msgid "MSE quantization"
+msgstr "MSE 量化"
+
+#: ../../source/explanation/quantization-families.md:19
+msgid ""
+"MSE is the native non-calibrated INT4 and INT8 path. It can produce W4A16"
+" and W8A16 `compressed-tensors` `pack-quantized` output, or W8A8 "
+"`compressed-tensors` `int-quantized` output. Group quantization requires "
+"each selected layer's `in_features` to be divisible by the group size. "
+"Channel strategy omits `group_size` and is currently valid only for INT8."
+msgstr "MSE 是原生的非校准 INT4 和 INT8 路径。它可以生成 W4A16 和 W8A16 `compressed-tensors` `pack-quantized` 输出，或 W8A8 `compressed-tensors` `int-quantized` 输出。分组量化要求每个选中层的 `in_features` 都能被 group size 整除。通道策略会省略 `group_size`，目前仅对 INT8 有效。"
+
+#: ../../source/explanation/quantization-families.md:21
+msgid ""
+"MSE uses candidate search to minimize reconstruction error without "
+"representative calibration text. The default group size is 32 for MSE "
+"INT4 and 128 for MSE INT8. The default chunk size is 4096 for INT4 and "
+"1024 for INT8. W8A16 channel is valid for ordinary Linear, attention, and"
+" shared-expert weights, but routed MoE weights must use group strategy. "
+"W8A8 is the channel-strategy path for dynamic INT8 activations. MSE W8A16"
+" scales are stored as BF16. W8A8 scale dtype is configurable as FP32 or "
+"BF16."
+msgstr "MSE 使用候选搜索来最小化重构误差，无需代表性校准文本。MSE INT4 的默认 group size 为 32，MSE INT8 的默认 group size 为 128。INT4 的默认 chunk size 为 4096，INT8 为 1024。W8A16 channel 对普通 Linear、attention 和共享专家权重有效，但路由 MoE 权重必须使用 group 策略。W8A8 是动态 INT8 激活的 channel 策略路径。MSE W8A16 scale 以 BF16 存储。W8A8 scale dtype 可配置为 FP32 或 BF16。"
+
+#: ../../source/explanation/quantization-families.md
+#: ../../source/explanation/quantization-families.md:25
+msgid "GPTQ"
+msgstr "GPTQ"
+
+#: ../../source/explanation/quantization-families.md:27
+msgid ""
+"GPTQ is a calibrated weight-only method. It collects a running Hessian "
+"from representative activations, applies Cholesky-based error feedback, "
+"and can use activation ordering. True-sequential mode quantizes "
+"projection groups in sequence so later groups see the effect of earlier "
+"quantization."
+msgstr "GPTQ 是一种校准式仅权重方法。它从代表性激活中收集运行中的 Hessian，应用基于 Cholesky 的误差反馈，并可使用激活排序。true-sequential 模式会按顺序量化投影组，使后续组能够看到较早量化带来的影响。"
+
+#: ../../source/explanation/quantization-families.md:29
+msgid ""
+"GPTQ uses the tensor ABI containing `qweight`, `qzeros`, `scales`, and "
+"`g_idx`. Its defaults are:"
+msgstr "GPTQ 使用包含 `qweight`、`qzeros`、`scales` 和 `g_idx` 的张量 ABI。其默认值为："
+
+#: ../../source/explanation/quantization-families.md:31
+msgid "block size `128`"
+msgstr "block size `128`"
+
+#: ../../source/explanation/quantization-families.md:32
+msgid "damp percent `0.01`"
+msgstr "damp percent `0.01`"
+
+#: ../../source/explanation/quantization-families.md:33
+msgid "`desc_act=true`"
+msgstr "`desc_act=true`"
+
+#: ../../source/explanation/quantization-families.md:34
+msgid "`static_groups=false`"
+msgstr "`static_groups=false`"
+
+#: ../../source/explanation/quantization-families.md:35
+msgid "`true_sequential=true`"
+msgstr "`true_sequential=true`"
+
+#: ../../source/explanation/quantization-families.md:36
+msgid "`symmetric=true`"
+msgstr "`symmetric=true`"
+
+#: ../../source/explanation/quantization-families.md:38
+msgid ""
+"GPTQ currently supports weight-only A16 group quantization and maps to "
+"the native GPTQ format. Whether a runtime can load a particular GPTQ "
+"artifact depends on the loader, projection shapes, and kernel "
+"implementation."
+msgstr "GPTQ 目前支持仅权重 A16 group 量化，并映射到原生 GPTQ 格式。运行时能否加载特定 GPTQ 构件取决于加载器、投影形状和内核实现。"
+
+#: ../../source/explanation/quantization-families.md
+#: ../../source/explanation/quantization-families.md:40
+msgid "AWQ"
+msgstr "AWQ"
+
+#: ../../source/explanation/quantization-families.md:42
+msgid ""
+"AWQ is a calibrated method that searches activation-aware scaling "
+"candidates and can apply output-MSE clipping. Its native GEMM path uses "
+"asymmetric zero points and GEMM-oriented packing."
+msgstr "AWQ 是一种校准式方法，会搜索感知激活的 scaling 候选，并可应用输出 MSE 裁剪。其原生 GEMM 路径使用非对称 zero points 和面向 GEMM 的打包。"
+
+#: ../../source/explanation/quantization-families.md:44
+msgid "The current policy requires:"
+msgstr "当前策略要求："
+
+#: ../../source/explanation/quantization-families.md:46
+msgid "4-bit weights"
+msgstr "4-bit 权重"
+
+#: ../../source/explanation/quantization-families.md:47
+msgid "A16 activations"
+msgstr "A16 激活"
+
+#: ../../source/explanation/quantization-families.md:48
+msgid "group strategy"
+msgstr "group 策略"
+
+#: ../../source/explanation/quantization-families.md:49
+msgid "zero points enabled"
+msgstr "启用 zero points"
+
+#: ../../source/explanation/quantization-families.md:51
+msgid ""
+"The defaults include duo scaling, output clipping, a 20-point search "
+"grid, and a 1 GiB maximum chunk-memory setting. AWQ maps to the native "
+"AWQ format. The target runtime must support the corresponding AWQ GEMM "
+"ABI."
+msgstr "默认设置包括 duo scaling、输出裁剪、20 点搜索网格，以及 1 GiB 的最大 chunk-memory 设置。AWQ 映射到原生 AWQ 格式。目标运行时必须支持对应的 AWQ GEMM ABI。"
+
+#: ../../source/explanation/quantization-families.md
+#: ../../source/explanation/quantization-families.md:53
+msgid "AutoRound"
+msgstr "AutoRound"
+
+#: ../../source/explanation/quantization-families.md:55
+msgid ""
+"AutoRound optimizes learnable rounding offsets and can tune quantization "
+"ranges with min/max updates. Quantized-input cascading lets later "
+"optimization steps consume quantized inputs. The current integration runs"
+" on a single device and uses settings for iterations, learning rates, "
+"batch size, gradient accumulation, momentum, min/max tuning, and "
+"quantized-input cascading."
+msgstr "AutoRound 会优化可学习的舍入偏移，并可通过 min/max 更新调整量化范围。量化输入级联让后续优化步骤能够消费量化输入。当前集成在单设备上运行，并使用迭代次数、学习率、batch size、梯度累积、动量、min/max 调优和量化输入级联等设置。"
+
+#: ../../source/explanation/quantization-families.md:57
+msgid ""
+"AutoRound currently requires symmetric weights, A16 activations, and "
+"group strategy. It uses the GPTQ tensor ABI for storage but retains "
+"`algorithm: autoround` provenance in the output metadata. Algorithm "
+"choice and packing format are separate concerns. An official AutoRound "
+"JSON configuration can supply method settings, while explicit CLI and "
+"recipe values take precedence. The official AutoRound package is optional"
+" and loaded lazily only for explicit reference or parity workflows. "
+"Native execution does not import it. Exported metadata uses `provider: "
+"flagos-compressor` while retaining official-compatible field names."
+msgstr "AutoRound 目前要求对称权重、A16 激活和 group 策略。它使用 GPTQ 张量 ABI 进行存储，但会在输出元数据中保留 `algorithm: autoround` 来源信息。算法选择和打包格式是相互独立的关注点。官方 AutoRound JSON 配置可以提供方法设置，而显式 CLI 和 recipe 值优先。官方 AutoRound 包是可选的，仅在显式参考或一致性工作流中延迟加载。原生执行不会导入它。导出的元数据使用 `provider: flagos-compressor`，同时保留与官方兼容的字段名。"
+
+#: ../../source/explanation/quantization-families.md:63
+msgid "Method and format mapping"
+msgstr "方法与格式映射"
+
+#: ../../source/explanation/quantization-families.md:65
+msgid "The implementation enforces this mapping:"
+msgstr "实现会强制执行以下映射："
+
+#: ../../source/explanation/quantization-families.md
+msgid "Method"
+msgstr "方法"
+
+#: ../../source/explanation/quantization-families.md
+msgid "Output format"
+msgstr "输出格式"
+
+#: ../../source/explanation/quantization-families.md
+msgid "MSE"
+msgstr "MSE"
+
+#: ../../source/explanation/quantization-families.md
+msgid "`compressed-tensors`"
+msgstr "`compressed-tensors`"
+
+#: ../../source/explanation/quantization-families.md
+msgid "`gptq`"
+msgstr "`gptq`"
+
+#: ../../source/explanation/quantization-families.md
+msgid "`awq`"
+msgstr "`awq`"
+
+#: ../../source/explanation/quantization-families.md
+msgid "`gptq` with AutoRound provenance"
+msgstr "带有 AutoRound 来源信息的 `gptq`"
+
+#: ../../source/explanation/quantization-families.md:74
+msgid ""
+"The format is inferred from the method when omitted. An incompatible "
+"explicit format is rejected."
+msgstr "省略格式时会根据方法推断。不兼容的显式格式会被拒绝。"
+
+#: ../../source/explanation/quantization-families.md:76
+msgid "Calibration and deployment boundary"
+msgstr "校准与部署边界"
+
+#: ../../source/explanation/quantization-families.md:78
+msgid ""
+"GPTQ, AWQ, and AutoRound require representative calibration data and an "
+"available execution backend. Calibration quality depends on sample "
+"diversity and, for MoE models, whether selected experts receive "
+"representative routed tokens."
+msgstr "GPTQ、AWQ 和 AutoRound 需要代表性校准数据以及可用的执行后端。校准质量取决于样本多样性；对于 MoE 模型，还取决于所选专家是否接收到具有代表性的路由 token。"
+
+#: ../../source/explanation/quantization-families.md:80
+msgid ""
+"A structurally valid artifact may still be unusable when the runtime "
+"lacks the declared ABI, architecture mapping, or hardware kernel. Run "
+"structural validation first, then runtime loading, accuracy, memory, and "
+"throughput tests."
+msgstr "结构有效的构件在运行时缺少声明的 ABI、架构映射或硬件内核时仍可能不可用。请先进行结构验证，再进行运行时加载、精度、内存和吞吐量测试。"
