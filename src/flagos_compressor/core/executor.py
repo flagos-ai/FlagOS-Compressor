@@ -12,6 +12,7 @@ from flagos_compressor.core.moe_layout import ExpertProjection, layout_by_name
 from flagos_compressor.core.plan import ExecutionPlan, TensorAction
 from flagos_compressor.core.report import ConversionReport
 from flagos_compressor.formats.base import get_weight_format
+from flagos_compressor.formats.bf16_chunks import dequantize_bf16_cpu
 from flagos_compressor.formats.compressed_tensors import (
     compressed_tensor_names,
     int_quantized_tensor_names,
@@ -102,6 +103,7 @@ def _patch_bf16_config(output_path: Path) -> None:
     with config_path.open("r", encoding="utf-8") as f:
         config = json.load(f)
 
+    config.pop("flagos_source_quantization", None)
     config["torch_dtype"] = "bfloat16"
     for key in _STRIP_CONFIG_KEYS:
         config.pop(key, None)
@@ -169,7 +171,7 @@ def _deepseek_v4_runtime_targets(
     """
     text_config = config.get("text_config") or {}
     model_type = config.get("model_type") or text_config.get("model_type")
-    if model_type != "deepseek_v4":
+    if model_type not in {"deepseek_v4", "deepseek_v41"}:
         return set()
 
     modules = {
@@ -189,6 +191,39 @@ def _deepseek_v4_runtime_targets(
                 aliases.add(f"{prefix}.gate_up_proj")
         if module.endswith(".shared_experts.w2"):
             aliases.add(module[: -len(".w2")] + ".down_proj")
+    if model_type == "deepseek_v41":
+        # The V4.1 multimodal wrapper installs its mapper on the instance,
+        # after quantized modules are constructed. Explicit runtime paths
+        # therefore cover both its text-only and multimodal entry points.
+        text_modules = {
+            name for name in modules | aliases
+            if name.startswith(("layers.", "mtp.")) and ".experts." not in name
+        }
+        aliases.update("model." + name for name in text_modules)
+        aliases.update("language_model.model." + name for name in text_modules)
+    return aliases
+
+
+def _mimo_runtime_targets(
+    config: dict,
+    selected_logical_weights: set[str],
+) -> set[str]:
+    """Describe MiMo's fused dense MLP without relying on a runtime mapper.
+
+    The vLLM Omni wrapper does not expose its language model's packed-module
+    mapping. Without an explicit gate_up_proj target, compressed-tensors can
+    silently load the selected INT8 gate/up weights into an unquantized layer.
+    Only fuse projections selected by the same quantization scheme.
+    """
+    if config.get("model_type") != "mimo_v2":
+        return set()
+    aliases = set()
+    for name in selected_logical_weights:
+        if not name.endswith(".mlp.gate_proj.weight"):
+            continue
+        prefix = name[: -len("gate_proj.weight")]
+        if prefix + "up_proj.weight" in selected_logical_weights:
+            aliases.add(prefix + "gate_up_proj")
     return aliases
 
 
@@ -265,6 +300,7 @@ def _patch_compressed_tensors_config(
     for scheme, selected in sorted(selected_by_scheme.items(), key=lambda item: str(item[0])):
         num_bits, activation_num_bits, strategy, group_size = scheme
         runtime_targets = _deepseek_v4_runtime_targets(config, selected)
+        runtime_targets.update(_mimo_runtime_targets(config, selected))
         runtime_targets.update(_routed_moe_runtime_targets(selected))
         group_config = build_compressed_tensors_config(
             all_logical_weights,
@@ -298,6 +334,28 @@ def _patch_compressed_tensors_config(
         )
     assert quantization_config is not None
 
+    preserved = [t for t in plan.kept_tensors if t.role == "weight" and t.scale_name]
+    if preserved:
+        source_config = config.get("quantization_config")
+        if not source_config:
+            raise ValueError("Preserving quantized weights requires the source quantization_config")
+        plan.metadata["source_quantization_config"] = source_config
+        # This is a source-format contract for model-specific modules, not a
+        # claim that arbitrary compressed-tensors loaders can consume them.
+        config["flagos_source_quantization"] = {
+            "quantization_config": source_config,
+            "weights": {t.name: {"scale": t.scale_name, "format": t.storage_format,
+                                 "storage_params": t.storage_params} for t in preserved},
+        }
+
+    else:
+        config.pop("flagos_source_quantization", None)
+    if any(
+        a.output_format.name == "bf16"
+        and a.tensor.name.endswith(".engram.embed.weight")
+        for a in plan.actions
+    ):
+        config["flagos_bf16_engram"] = True
     config["torch_dtype"] = "bfloat16"
     for key in (*_STRIP_CONFIG_KEYS, "expert_dtype"):
         config.pop(key, None)
@@ -450,6 +508,9 @@ def _write_quantization_manifest(
                 "logical_shape": list(tensor.effective_logical_shape),
                 "kept_from_source": True,
             }
+            if tensor.scale_name:
+                tensors[tensor.name].update({"scale": tensor.scale_name,
+                                             "storage_params": tensor.storage_params})
 
     quantized_actions = [
         action
@@ -604,6 +665,15 @@ def _write_quantization_manifest(
         },
         "tensors": tensors,
     }
+    preserved = [t for t in plan.kept_tensors if t.role == "weight" and t.scale_name]
+    if preserved:
+        manifest["source_quantization_config"] = plan.metadata["source_quantization_config"]
+        manifest["preserved_tensors"] = {
+            t.name: {"scale": t.scale_name, "format": t.storage_format,
+                     "storage_params": t.storage_params, "dtype": t.dtype,
+                     "storage_shape": list(t.shape)} for t in preserved
+        }
+        manifest["runtime_config"]["requires_source_format_modules"] = True
     with (output_path / "quantization_manifest.json").open(
         "w", encoding="utf-8"
     ) as f:
@@ -664,13 +734,20 @@ def execute_plan(
 
             scale = get_tensor(action.tensor.scale_name) if action.tensor.scale_name else None
             input_format = get_weight_format(action.input_format.name)
-            canonical_weight = input_format.to_canonical(
-                tensor,
-                scale,
-                backend,
-                context,
-                action.input_format.params,
-            )
+            if (
+                action.output_format.name == "bf16"
+                and action.input_format.name in {"fp8_block_e8m0", "fp4_e2m1_e8m0"}
+                and tensor.numel() > 16 * 1024 * 1024
+                and not action.input_format.params.get("qkv_groups")
+            ):
+                canonical_weight = dequantize_bf16_cpu(
+                    tensor, scale, input_format, backend, context,
+                    action.input_format.params,
+                )
+            else:
+                canonical_weight = input_format.to_canonical(
+                    tensor, scale, backend, context, action.input_format.params,
+                )
             output_format = get_weight_format(action.output_format.name)
             result = output_format.from_canonical(
                 tensor_name,
