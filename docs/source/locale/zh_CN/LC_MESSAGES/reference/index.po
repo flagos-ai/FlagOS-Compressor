@@ -1,0 +1,91 @@
+﻿# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/reference/index.md:1
+msgid "Reference"
+msgstr "参考"
+
+#: ../../source/reference/index.md:3
+msgid ""
+"Use this section for stable command, format, selector, recipe, output, "
+"and compatibility definitions."
+msgstr "使用本节查看稳定的命令、格式、选择器、配方、输出和兼容性定义。"
+
+#: ../../source/reference/index.md:5
+msgid "Reference categories"
+msgstr "参考类别"
+
+#: ../../source/reference/index.md
+msgid "Category"
+msgstr "类别"
+
+#: ../../source/reference/index.md
+msgid "Contents"
+msgstr "内容"
+
+#: ../../source/reference/index.md
+msgid "[CLI reference](cli.md)"
+msgstr "[CLI reference](cli.md)"
+
+#: ../../source/reference/index.md
+msgid "command-line commands, options, and examples"
+msgstr "命令行命令、选项和示例"
+
+#: ../../source/reference/index.md
+msgid "[Format reference](formats.md)"
+msgstr "[格式参考](formats.md)"
+
+#: ../../source/reference/index.md
+msgid "supported input and output formats"
+msgstr "支持的输入和输出格式"
+
+#: ../../source/reference/index.md
+msgid "[Selector reference](selectors.md)"
+msgstr "[Selector reference](selectors.md)"
+
+#: ../../source/reference/index.md
+msgid "built-in selectors, regex selection, and selection semantics"
+msgstr "内置选择器、正则表达式选择和选择语义"
+
+#: ../../source/reference/index.md
+msgid "[Recipe reference](recipes.md)"
+msgstr "[Recipe reference](recipes.md)"
+
+#: ../../source/reference/index.md
+msgid "YAML recipe fields and examples"
+msgstr "YAML 配方字段和示例"
+
+#: ../../source/reference/index.md
+msgid "[Output files](output-files.md)"
+msgstr "[Output files](output-files.md)"
+
+#: ../../source/reference/index.md
+msgid "generated files and publishing requirements"
+msgstr "生成文件和发布要求"
+
+#: ../../source/reference/index.md
+msgid "[Compatibility reference](compatibility.md)"
+msgstr "[Compatibility reference](compatibility.md)"
+
+#: ../../source/reference/index.md
+msgid "model, quantization, backend, and runtime compatibility notes"
+msgstr "模型、量化、后端和运行时兼容性说明"
+

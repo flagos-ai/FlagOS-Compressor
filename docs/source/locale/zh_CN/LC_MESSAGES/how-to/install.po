@@ -1,0 +1,239 @@
+﻿# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/how-to/install.md:1
+msgid "Install FlagOS-Compressor"
+msgstr "安装 FlagOS-Compressor"
+
+#: ../../source/how-to/install.md:3
+msgid ""
+"Install FlagOS-Compressor before running inspection, conversion, "
+"quantization, or validation commands."
+msgstr ""
+"在运行检查、转换、量化或验证命令之前，"
+"请先安装 FlagOS-Compressor。"
+
+#: ../../source/how-to/install.md:5
+msgid "Prerequisites"
+msgstr "前提条件"
+
+#: ../../source/how-to/install.md:7
+msgid "Prepare the following before installing:"
+msgstr "安装前请准备以下内容："
+
+#: ../../source/how-to/install.md:9
+msgid "Python 3.10 or later"
+msgstr "Python 3.10 或更高版本"
+
+#: ../../source/how-to/install.md:10
+msgid ""
+"enough local storage for the repository, dependencies, and generated "
+"model outputs"
+msgstr ""
+"为仓库、依赖项和生成的模型输出预留足够的本地存储空间"
+
+#: ../../source/how-to/install.md:11
+msgid "a PyTorch installation appropriate for your target backend"
+msgstr "与目标后端匹配的 PyTorch 安装"
+
+#: ../../source/how-to/install.md:12
+msgid "Git, if you install from a repository checkout"
+msgstr "如果从仓库检出安装，则需要 Git"
+
+#: ../../source/how-to/install.md:14
+msgid "Install from a source checkout"
+msgstr "从源码检出安装"
+
+#: ../../source/how-to/install.md:16
+msgid ""
+"Use a source checkout when you need editable code, documentation updates,"
+" or a pinned commit."
+msgstr ""
+"当你需要可编辑代码、文档更新或固定提交时，"
+"请使用源码检出。"
+
+#: ../../source/how-to/install.md:24
+msgid "Install source extras with the same optional dependency names:"
+msgstr "使用相同的可选依赖名称安装源码额外依赖："
+
+#: ../../source/how-to/install.md:31
+msgid ""
+"Use `datasets` for Hugging Face dataset-backed calibration inputs. Use "
+"`official-autoround` only when you need the official AutoRound package "
+"path. Native AutoRound execution does not require that package."
+msgstr ""
+"对于基于 Hugging Face 数据集的校准输入，请使用 `datasets`。"
+"仅在需要官方 AutoRound 包路径时使用 `official-autoround`。"
+"原生 AutoRound 执行不需要该包。"
+
+#: ../../source/how-to/install.md:33
+msgid ""
+"The official AutoRound Python entry point is loaded lazily only when an "
+"explicit reference or parity workflow requests it. Normal installation "
+"and native FlagOS-Compressor execution do not import the optional "
+"package."
+msgstr ""
+"官方 AutoRound Python 入口点仅在显式引用或对齐工作流请求时才会延迟加载。"
+"正常安装和原生 FlagOS-Compressor 执行不会导入该可选包。"
+
+#: ../../source/how-to/install.md:37
+msgid "Use the main branch unless your workflow requires a pinned tag or commit:"
+msgstr "除非你的工作流需要固定标签或提交，否则请使用 main 分支："
+
+#: ../../source/how-to/install.md:44
+msgid "Verify the installation"
+msgstr "验证安装"
+
+#: ../../source/how-to/install.md:46
+msgid "Check the package entry point:"
+msgstr "检查包入口点："
+
+#: ../../source/how-to/install.md:53
+msgid "Expected result:"
+msgstr "预期结果："
+
+#: ../../source/how-to/install.md:55
+msgid ""
+"`flagos-compressor --help` lists `convert`, `quantize`, `inspect`, and "
+"`validate`"
+msgstr ""
+"`flagos-compressor --help` 列出 `convert`、`quantize`、`inspect` 和 "
+"`validate`"
+
+#: ../../source/how-to/install.md:56
+msgid ""
+"`flagos-compressor quantize --help` lists quantization, selection, "
+"calibration, GPTQ, AWQ, and AutoRound options."
+msgstr ""
+"`flagos-compressor quantize --help` 列出量化、选择、校准、GPTQ、AWQ 和 "
+"AutoRound 选项。"
+
+#: ../../source/how-to/install.md:58
+msgid "If you installed from source, also record the commit:"
+msgstr "如果你从源码安装，还要记录提交："
+
+#: ../../source/how-to/install.md:64
+msgid "Choose a backend"
+msgstr "选择后端"
+
+#: ../../source/how-to/install.md:66
+msgid "Pass the backend explicitly in conversion and quantization commands:"
+msgstr "在转换和量化命令中显式传入后端："
+
+#: ../../source/how-to/install.md
+msgid "Backend"
+msgstr "后端"
+
+#: ../../source/how-to/install.md
+msgid "Use when"
+msgstr "适用场景"
+
+#: ../../source/how-to/install.md
+msgid "Example"
+msgstr "示例"
+
+#: ../../source/how-to/install.md
+msgid "`cuda`"
+msgstr "`cuda`"
+
+#: ../../source/how-to/install.md
+msgid "CUDA-enabled PyTorch can see an NVIDIA GPU"
+msgstr "启用 CUDA 的 PyTorch 可以检测到 NVIDIA GPU"
+
+#: ../../source/how-to/install.md
+msgid "`--backend cuda --device cuda:0`"
+msgstr "`--backend cuda --device cuda:0`"
+
+#: ../../source/how-to/install.md
+msgid "`cpu`"
+msgstr "`cpu`"
+
+#: ../../source/how-to/install.md
+msgid "you need a portable fallback or functional smoke test"
+msgstr "你需要可移植的备用方案或功能冒烟测试"
+
+#: ../../source/how-to/install.md
+msgid "`--backend cpu`"
+msgstr "`--backend cpu`"
+
+#: ../../source/how-to/install.md
+msgid "`npu`, `mlu`, `musa`"
+msgstr "`npu`、`mlu`、`musa`"
+
+#: ../../source/how-to/install.md
+msgid "your PyTorch build exposes one of these extension backends"
+msgstr "你的 PyTorch 构建暴露了这些扩展后端之一"
+
+#: ../../source/how-to/install.md
+msgid "`--backend npu`"
+msgstr "`--backend npu`"
+
+#: ../../source/how-to/install.md:75
+msgid ""
+"The CLI default backend is `cpu`. CUDA is usually the preferred "
+"generation environment when available, but generated artifacts still need"
+" independent validation on their runtime target."
+msgstr ""
+"CLI 默认后端是 `cpu`。当 CUDA 可用时，它通常是首选生成环境，"
+"但生成的产物仍需在其运行时目标上独立验证。"
+
+#: ../../source/how-to/install.md:78
+msgid "Record version information"
+msgstr "记录版本信息"
+
+#: ../../source/how-to/install.md:80
+msgid "Record the exact tool revision and model inputs when producing artifacts:"
+msgstr "生成产物时记录准确的工具修订版本和模型输入："
+
+#: ../../source/how-to/install.md:93
+msgid "For a source checkout, add the commit:"
+msgstr "对于源码检出，添加提交："
+
+#: ../../source/how-to/install.md:99
+msgid "Copy the record next to generated outputs when you need reproducibility:"
+msgstr "需要可复现性时，将记录复制到生成输出旁边："
+
+#: ../../source/how-to/install.md:105
+msgid "Fallbacks"
+msgstr "备用方案"
+
+#: ../../source/how-to/install.md:107
+msgid "If installation fails:"
+msgstr "如果安装失败："
+
+#: ../../source/how-to/install.md:109
+msgid "verify the Python version is at least 3.10"
+msgstr "确认 Python 版本至少为 3.10"
+
+#: ../../source/how-to/install.md:110
+msgid "install a PyTorch build that matches your device backend"
+msgstr "安装与你的设备后端匹配的 PyTorch 构建"
+
+#: ../../source/how-to/install.md:111
+msgid ""
+"use `python -m pip install -e .` from the repository root for source "
+"installs"
+msgstr ""
+"对于源码安装，请在仓库根目录运行 `python -m pip install -e .`"
+
+#: ../../source/how-to/install.md:112
+msgid "rerun `flagos-compressor --help` before attempting model processing"
+msgstr "在尝试处理模型之前，重新运行 `flagos-compressor --help`"

@@ -68,8 +68,12 @@ instance/
 # Scrapy stuff:
 .scrapy
 
+# Claude Code local files
+.claude/
+
 # Sphinx documentation
 docs/_build/
+docs/.claude/
 
 # PyBuilder
 .pybuilder/

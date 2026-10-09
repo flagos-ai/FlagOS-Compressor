@@ -1,0 +1,397 @@
+﻿# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/how-to/troubleshoot.md:1
+msgid "Troubleshoot common failures"
+msgstr "排查常见故障"
+
+#: ../../source/how-to/troubleshoot.md:3
+msgid ""
+"Use this page by searching for the complete error message. Fix the input or "
+"selection described by the matching entry, then rerun `inspect` and `--dry-"
+"run` before writing a new output directory."
+msgstr "通过搜索完整错误消息来使用本页。修复匹配条目中描述的输入或选择范围，然后在写入新的输出目录之前重新运行 `inspect` 和 `--dry-run`。"
+
+#: ../../source/how-to/troubleshoot.md:7
+msgid "`Missing model.safetensors.index.json`"
+msgstr "`Missing model.safetensors.index.json`"
+
+#: ../../source/how-to/troubleshoot.md:9
+msgid ""
+"The input path is incorrect, or the checkpoint is not an indexed sharded "
+"`safetensors` export."
+msgstr "输入路径不正确，或者该 checkpoint 不是带索引的分片 `safetensors` 导出。"
+
+#: ../../source/how-to/troubleshoot.md:12
+msgid ""
+"Check that the input directory is the exported model root and that the index"
+" and all referenced shards are present together. A supported single-file "
+"checkpoint can use `model.safetensors` instead of the index and shard set. "
+"Rerun `inspect` after correcting the directory."
+msgstr ""
+"检查输入目录是否为导出的模型根目录，并确认索引和所有引用的分片同时存在。受支持的单文件 checkpoint 可以使用 "
+"`model.safetensors`，而不是索引和分片集合。修正目录后重新运行 `inspect`。"
+
+#: ../../source/how-to/troubleshoot.md:17
+msgid "`No supported FP8/FP4 tensors were found`"
+msgstr "`No supported FP8/FP4 tensors were found`"
+
+#: ../../source/how-to/troubleshoot.md:19
+msgid ""
+"`convert` did not find recognized MXFP4 or strict 128 x 128 block FP8 "
+"tensors. If the input is already BF16 or FP16, this result is expected; use "
+"it as the floating-point baseline instead of running `convert`."
+msgstr ""
+"`convert` 未找到可识别的 MXFP4 或严格 128 x 128 块 FP8 张量。如果输入已经是 BF16 或 "
+"FP16，这是预期结果；请将其作为浮点基线，而不是运行 `convert`。"
+
+#: ../../source/how-to/troubleshoot.md:23
+msgid ""
+"For a low-precision input, verify the layout with `inspect` and confirm that"
+" the scale tensors satisfy the supported format rules. Do not bypass an "
+"unrecognized layout check."
+msgstr "对于低精度输入，请用 `inspect` 验证布局，并确认 scale 张量满足受支持的格式规则。不要绕过无法识别的布局检查。"
+
+#: ../../source/how-to/troubleshoot.md:27
+msgid "`No weights selected`"
+msgstr "`No weights selected`"
+
+#: ../../source/how-to/troubleshoot.md:29
+msgid ""
+"No `--select` or `--select-name` option was provided, and the recipe does "
+"not contain a `select` entry."
+msgstr "未提供 `--select` 或 `--select-name` 选项，并且 recipe 中也不包含 `select` 条目。"
+
+#: ../../source/how-to/troubleshoot.md:32
+msgid ""
+"Add at least one built-in selector or name rule. Recipe and CLI selectors "
+"can be combined; use the [selector reference](../reference/selectors.md) for"
+" the available built-in groups."
+msgstr ""
+"至少添加一个内置选择器或名称规则。Recipe 和 CLI 选择器可以组合使用；可用的内置分组请参见 [selector "
+"reference](../reference/selectors.md)。"
+
+#: ../../source/how-to/troubleshoot.md:36
+msgid "`selectors did not match any supported tensors`"
+msgstr "`selectors did not match any supported tensors`"
+
+#: ../../source/how-to/troubleshoot.md:38
+msgid ""
+"The resolved selector set did not match any supported quantizable weights. "
+"The CLI may report this as `The INT4 selectors did not match any supported "
+"tensors` or `The INT8 selectors did not match any supported tensors`."
+msgstr ""
+"解析后的选择器集合没有匹配任何受支持的可量化权重。CLI 可能会将其报告为 `The INT4 selectors did not match any "
+"supported tensors` 或 `The INT8 selectors did not match any supported "
+"tensors`。"
+
+#: ../../source/how-to/troubleshoot.md:42
+msgid ""
+"Run `inspect` first, check the model's actual weight names and recognized "
+"groups, then rerun the same command with `--dry-run`. Do not infer selector "
+"names from the model name alone."
+msgstr "先运行 `inspect`，检查模型的实际权重名称和已识别分组，然后使用 `--dry-run` 重新运行同一命令。不要仅根据模型名称推断选择器名称。"
+
+#: ../../source/how-to/troubleshoot.md:46
+msgid "`unmatched quantized` is not `0`"
+msgstr "`unmatched quantized` is not `0`"
+
+#: ../../source/how-to/troubleshoot.md:48
+msgid ""
+"The checkpoint contains scaled byte weights whose layout is not a recognized"
+" MXFP4 or block FP8 format. The tool refuses to guess the format."
+msgstr "该 checkpoint 包含带 scale 的字节权重，但其布局不是可识别的 MXFP4 或块 FP8 格式。工具会拒绝猜测格式。"
+
+#: ../../source/how-to/troubleshoot.md:51
+msgid ""
+"Do not publish the output or bypass this check. Add and validate support for"
+" the source format first, or use a checkpoint whose low-precision layout is "
+"recognized."
+msgstr "不要发布该输出，也不要绕过此检查。请先添加并验证对源格式的支持，或使用低精度布局已被识别的 checkpoint。"
+
+#: ../../source/how-to/troubleshoot.md:55
+msgid "`in_features must be divisible by group_size`"
+msgstr "`in_features must be divisible by group_size`"
+
+#: ../../source/how-to/troubleshoot.md:57
+msgid ""
+"At least one selected layer's input dimension is not divisible by the "
+"requested group size."
+msgstr "至少有一个被选中层的输入维度不能被请求的 group size 整除。"
+
+#: ../../source/how-to/troubleshoot.md:60
+msgid ""
+"Use `inspect` to review the selected layer shapes, then narrow the selection"
+" or choose a group size supported by every selected layer and the target "
+"runtime. Do not change the group size only to make the command pass without "
+"checking runtime support."
+msgstr ""
+"使用 `inspect` 查看所选层的形状，然后缩小选择范围，或选择每个所选层和目标运行时都支持的 group size。不要只为让命令通过而更改 "
+"group size，而不检查运行时支持。"
+
+#: ../../source/how-to/troubleshoot.md:65
+msgid "`INT4 pack-quantized storage requires in_features divisible by 8`"
+msgstr "`INT4 pack-quantized storage requires in_features divisible by 8`"
+
+#: ../../source/how-to/troubleshoot.md:67
+msgid ""
+"At least one selected layer does not satisfy the input-dimension requirement"
+" for packed INT4 storage."
+msgstr "至少有一个被选中层不满足 packed INT4 存储的输入维度要求。"
+
+#: ../../source/how-to/troubleshoot.md:70
+msgid ""
+"Change the selection scope or use a quantization scheme whose storage "
+"constraints fit the selected layers."
+msgstr "更改选择范围，或使用存储约束适合所选层的量化方案。"
+
+#: ../../source/how-to/troubleshoot.md:73
+msgid "`channel strategy cannot be used for routed MoE`"
+msgstr "`channel strategy cannot be used for routed MoE`"
+
+#: ../../source/how-to/troubleshoot.md:75
+msgid "W8A16 channel quantization is not valid for routed-expert weights."
+msgstr "W8A16 channel 量化不适用于路由专家权重。"
+
+#: ../../source/how-to/troubleshoot.md:77
+msgid "Use W8A16 group for routed experts, or use the complete W8A8 policy:"
+msgstr "对路由专家使用 W8A16 group，或使用完整的 W8A8 策略："
+
+#: ../../source/how-to/troubleshoot.md:83
+msgid "Do not use W8A16 channel for routed experts."
+msgstr "不要对路由专家使用 W8A16 channel。"
+
+#: ../../source/how-to/troubleshoot.md:85
+msgid "`group_size must be omitted for channel strategy`"
+msgstr "`group_size must be omitted for channel strategy`"
+
+#: ../../source/how-to/troubleshoot.md:87
+msgid ""
+"Channel strategy does not accept `--group-size`. Remove the option for both "
+"W8A16 channel and W8A8 channel commands."
+msgstr "Channel 策略不接受 `--group-size`。对于 W8A16 channel 和 W8A8 channel 命令都应移除此选项。"
+
+#: ../../source/how-to/troubleshoot.md:90
+msgid "`The selection splits fused inference units`"
+msgstr "`The selection splits fused inference units`"
+
+#: ../../source/how-to/troubleshoot.md:92
+msgid "A selector or exclusion matched only part of an inference-fused unit."
+msgstr "某个选择器或排除规则只匹配了推理融合单元的一部分。"
+
+#: ../../source/how-to/troubleshoot.md:94
+msgid ""
+"Use a built-in selector for the model family, or select the complete fused "
+"pair or expert bank. Gate, up, and down projections in a fused expert module"
+" must remain together, and routed expert banks must not be partially "
+"selected. Rerun `--dry-run` and confirm the selected counts before "
+"generation."
+msgstr ""
+"请使用该模型家族的内置选择器，或选择完整的融合对或专家权重组。融合专家模块中的 gate、up 和 down "
+"投影必须保持在一起，路由专家权重组不得被部分选择。生成前重新运行 `--dry-run` 并确认选中数量。"
+
+#: ../../source/how-to/troubleshoot.md:99
+msgid "A model with `self_attn.indexer` fails during attention or MoE quantization"
+msgstr "带有 `self_attn.indexer` 的模型在注意力或 MoE 量化期间失败"
+
+#: ../../source/how-to/troubleshoot.md:101
+msgid ""
+"A broad `--select attention` or `--select moe` rule may include auxiliary "
+"indexer weights that are not supported by the generic attention quantization"
+" path."
+msgstr "宽泛的 `--select attention` 或 `--select moe` 规则可能包含通用注意力量化路径不支持的辅助 indexer 权重。"
+
+#: ../../source/how-to/troubleshoot.md:105
+msgid "Exclude the indexer weights and rerun the dry-run:"
+msgstr "排除 indexer 权重并重新运行空运行："
+
+#: ../../source/how-to/troubleshoot.md:111
+msgid ""
+"The exclusion changes quantization selection only. Unselected floating-point"
+" weights remain unchanged; unselected source low-precision weights follow "
+"the configured unselected-weight policy."
+msgstr "该排除规则只改变量化选择范围。未选中的浮点权重保持不变；未选中的源低精度权重遵循配置的未选中权重策略。"
+
+#: ../../source/how-to/troubleshoot.md:115
+msgid "`Fused routed-expert quantization is not supported for this model`"
+msgstr "`Fused routed-expert quantization is not supported for this model`"
+
+#: ../../source/how-to/troubleshoot.md:117
+msgid ""
+"The model configuration has no registered fused 3D expert layout, and the "
+"complete `gate_up_proj` / `down_proj` shapes did not provide a consistent "
+"axis order for automatic inference."
+msgstr "模型配置没有注册的融合 3D 专家布局，并且完整的 `gate_up_proj` / `down_proj` 形状没有为自动推断提供一致的轴顺序。"
+
+#: ../../source/how-to/troubleshoot.md:121
+msgid ""
+"First check that the expert banks are complete and inspect their shapes. If "
+"the layout is still unknown, add and validate a model-specific `MoeLayout` "
+"before quantizing. Do not apply another model's layout by assumption."
+msgstr "先检查专家权重组是否完整并查看其形状。如果布局仍未知，请在量化前添加并验证模型专用的 `MoeLayout`。不要凭假设套用另一个模型的布局。"
+
+#: ../../source/how-to/troubleshoot.md:125
+msgid "`backend 'cuda' is unavailable`"
+msgstr "`backend 'cuda' is unavailable`"
+
+#: ../../source/how-to/troubleshoot.md:127
+msgid "The local PyTorch environment cannot see CUDA."
+msgstr "本地 PyTorch 环境无法发现 CUDA。"
+
+#: ../../source/how-to/troubleshoot.md:129
+msgid ""
+"Check the NVIDIA driver, CUDA runtime, and PyTorch installation. On PPU or "
+"Haiguang environments, use the backend name actually registered by the "
+"installed PyTorch extension; do not infer the argument from the vendor name."
+" You may use `--backend cpu` for conversion or non-calibrated functional "
+"smoke tests, but CPU execution does not establish accelerator support or "
+"performance."
+msgstr ""
+"检查 NVIDIA 驱动、CUDA 运行时和 PyTorch 安装。在 PPU 或海光环境中，请使用已安装 PyTorch "
+"扩展实际注册的后端名称；不要根据厂商名称推断参数。你可以将 `--backend cpu` 用于转换或非校准功能冒烟测试，但 CPU "
+"执行不能证明加速器支持或性能。"
+
+#: ../../source/how-to/troubleshoot.md:136
+msgid "`validate` returns `Valid`, but runtime loading fails"
+msgstr "`validate` 返回 `Valid`，但运行时加载失败"
+
+#: ../../source/how-to/troubleshoot.md:138
+msgid ""
+"`validate` checks artifact structure and metadata. It does not verify the "
+"target runtime, device kernel, graph compilation, memory capacity, or "
+"tensor-parallel configuration."
+msgstr "`validate` 检查工件结构和元数据。它不会验证目标运行时、设备内核、图编译、内存容量或张量并行配置。"
+
+#: ../../source/how-to/troubleshoot.md:142
+msgid "Check all of the following in the target environment:"
+msgstr "在目标环境中检查以下所有事项："
+
+#: ../../source/how-to/troubleshoot.md:144
+msgid ""
+"the inference framework version supports the declared `compressed-tensors`, "
+"GPTQ, AWQ, or AutoRound format;"
+msgstr "推理框架版本支持声明的 `compressed-tensors`、GPTQ、AWQ 或 AutoRound 格式；"
+
+#: ../../source/how-to/troubleshoot.md:146
+msgid "the loader supports the model architecture and exact tensor names;"
+msgstr "加载器支持该模型架构和确切的张量名称；"
+
+#: ../../source/how-to/troubleshoot.md:147
+msgid ""
+"the hardware has kernels for the selected W4A16, W8A16, W8A8, GPTQ, AWQ, or "
+"AutoRound path;"
+msgstr "硬件具备所选 W4A16、W8A16、W8A8、GPTQ、AWQ 或 AutoRound 路径的内核；"
+
+#: ../../source/how-to/troubleshoot.md:149
+msgid ""
+"tensor parallelism, KV cache, workspace, communication buffers, and "
+"framework overhead fit in memory;"
+msgstr "张量并行、KV cache、工作区、通信缓冲区和框架开销能够放入内存；"
+
+#: ../../source/how-to/troubleshoot.md:151
+msgid ""
+"logs do not show unexpected fallback, dequantization, or graph compilation "
+"failure."
+msgstr "日志未显示意外回退、反量化或图编译失败。"
+
+#: ../../source/how-to/troubleshoot.md:154
+msgid ""
+"For compressed-tensors output, review `quantization_manifest.json` and "
+"`quantization_report.json` when present. For native GPTQ or AutoRound, "
+"review `quantize_config.json` and the native tensors. For native AWQ, review"
+" `quant_config.json` and the native tensors."
+msgstr ""
+"对于 compressed-tensors 输出，如存在 `quantization_manifest.json` 和 "
+"`quantization_report.json`，请进行检查。对于原生 GPTQ 或 AutoRound，请检查 "
+"`quantize_config.json` 和原生张量。对于原生 AWQ，请检查 `quant_config.json` 和原生张量。"
+
+#: ../../source/how-to/troubleshoot.md:159
+msgid "Calibration fails after generation starts"
+msgstr "生成开始后校准失败"
+
+#: ../../source/how-to/troubleshoot.md:161
+msgid ""
+"Check the calibration file shape, text column, sample count, sequence "
+"length, model and tokenizer loading requirements, and backend availability. "
+"Prefer a small local text, JSON, or JSONL file to separate data parsing "
+"issues from dataset access issues."
+msgstr ""
+"检查校准文件形状、文本列、样本数量、序列长度、模型和 tokenizer 加载要求以及后端可用性。优先使用小型本地文本、JSON 或 JSONL "
+"文件，以区分数据解析问题和数据集访问问题。"
+
+#: ../../source/how-to/troubleshoot.md:166
+msgid ""
+"The `datasets` extra is required only for Hugging Face dataset names. "
+"`--trust-remote-code` applies to Transformers model and tokenizer loading, "
+"not to Hugging Face dataset loading. Calibrated GPTQ, AWQ, and AutoRound "
+"execution requires an available backend and does not silently fall back to "
+"CPU."
+msgstr ""
+"只有使用 Hugging Face 数据集名称时才需要 `datasets` extra。`--trust-remote-code` 适用于 "
+"Transformers 模型和 tokenizer 加载，不适用于 Hugging Face 数据集加载。校准式 GPTQ、AWQ 和 "
+"AutoRound 执行需要可用后端，不会静默回退到 CPU。"
+
+#: ../../source/how-to/troubleshoot.md:172
+msgid "What to record"
+msgstr "需要记录的内容"
+
+#: ../../source/how-to/troubleshoot.md:174
+msgid "When reporting a failure, keep:"
+msgstr "报告故障时，请保留："
+
+#: ../../source/how-to/troubleshoot.md:176
+msgid "the exact command line;"
+msgstr "确切的命令行；"
+
+#: ../../source/how-to/troubleshoot.md:177
+msgid "the recipe file, if one was used;"
+msgstr "recipe 文件（如果使用了）；"
+
+#: ../../source/how-to/troubleshoot.md:178
+msgid "source model name and revision;"
+msgstr "源模型名称和修订版本；"
+
+#: ../../source/how-to/troubleshoot.md:179
+msgid "FlagOS-Compressor version or source commit;"
+msgstr "FlagOS-Compressor 版本或源提交；"
+
+#: ../../source/how-to/troubleshoot.md:180
+msgid "backend and device;"
+msgstr "后端和设备；"
+
+#: ../../source/how-to/troubleshoot.md:181
+msgid "`inspect`, dry-run, and `validate --json` output when available;"
+msgstr "可用时的 `inspect`、空运行和 `validate --json` 输出；"
+
+#: ../../source/how-to/troubleshoot.md:182
+msgid "the relevant manifest/report or native method configuration."
+msgstr "相关清单/报告或原生方法配置。"
+
+#: ../../source/how-to/troubleshoot.md:184
+msgid "The normal release path is:"
+msgstr "正常发布路径为："
+
+#: ../../source/how-to/troubleshoot.md:195
+msgid ""
+"FlagOS-Compressor owns the first four steps. Runtime and quality checks must"
+" be completed in the deployment environment."
+msgstr "FlagOS-Compressor 负责前四个步骤。运行时和质量检查必须在部署环境中完成。"
+

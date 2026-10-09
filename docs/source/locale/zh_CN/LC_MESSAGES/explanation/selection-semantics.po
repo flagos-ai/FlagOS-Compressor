@@ -1,0 +1,166 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/explanation/selection-semantics.md:1
+msgid "Selection semantics"
+msgstr "选择语义"
+
+#: ../../source/explanation/selection-semantics.md:3
+msgid ""
+"The selection model defines which checkpoint weights are transformed and "
+"which are left unselected. It is designed to make broad architecture-"
+"aware selection easy while still allowing name-based control when needed."
+msgstr "选择模型定义哪些 checkpoint 权重会被转换、哪些保持未选中。它旨在简化面向架构的广泛选择，同时在需要时仍允许基于名称进行控制。"
+
+#: ../../source/explanation/selection-semantics.md:5
+msgid "Selector inputs"
+msgstr "选择器输入"
+
+#: ../../source/explanation/selection-semantics.md:7
+msgid "A selection can come from:"
+msgstr "选择可以来自："
+
+#: ../../source/explanation/selection-semantics.md:9
+msgid "built-in selectors passed with `--select`."
+msgstr "通过 `--select` 传入的内置选择器。"
+
+#: ../../source/explanation/selection-semantics.md:10
+msgid "regex patterns passed with `--select-name`."
+msgstr "通过 `--select-name` 传入的正则表达式模式。"
+
+#: ../../source/explanation/selection-semantics.md:11
+msgid "exclusions passed with `--exclude`."
+msgstr "通过 `--exclude` 传入的排除项。"
+
+#: ../../source/explanation/selection-semantics.md:12
+msgid "regex exclusions passed with `--exclude-name`."
+msgstr "通过 `--exclude-name` 传入的正则排除项。"
+
+#: ../../source/explanation/selection-semantics.md:13
+msgid "recipe `select` entries."
+msgstr "recipe 中的 `select` 条目。"
+
+#: ../../source/explanation/selection-semantics.md:15
+msgid ""
+"Selections from the CLI and recipe are merged. Explicit CLI parameters "
+"can override recipe settings for scalar quantization options."
+msgstr "来自 CLI 和 recipe 的选择会被合并。对于标量量化选项，显式 CLI 参数可以覆盖 recipe 设置。"
+
+#: ../../source/explanation/selection-semantics.md:17
+msgid "Union then subtraction"
+msgstr "先并集后差集"
+
+#: ../../source/explanation/selection-semantics.md:19
+msgid "The selected set is built in two steps:"
+msgstr "选中集合分两步构建："
+
+#: ../../source/explanation/selection-semantics.md:21
+msgid "`--select` and `--select-name` add weights to the candidate set."
+msgstr "`--select` 和 `--select-name` 将权重加入候选集合。"
+
+#: ../../source/explanation/selection-semantics.md:22
+msgid "`--exclude` and `--exclude-name` remove weights from that candidate set."
+msgstr "`--exclude` 和 `--exclude-name` 从候选集合中移除权重。"
+
+#: ../../source/explanation/selection-semantics.md:24
+msgid "This makes broad selection plus narrow exclusion possible."
+msgstr "这样即可实现广泛选择与精细排除。"
+
+#: ../../source/explanation/selection-semantics.md:26
+msgid "Why built-in selectors matter"
+msgstr "内置选择器的重要性"
+
+#: ../../source/explanation/selection-semantics.md:28
+msgid ""
+"Built-in selectors encode knowledge about supported model families and "
+"fused layouts. They are safer than regex when a model contains:"
+msgstr "内置选择器编码了对受支持模型家族和融合布局的知识。当模型包含以下内容时，它们比正则表达式更安全："
+
+#: ../../source/explanation/selection-semantics.md:30
+msgid "MoE routed expert banks."
+msgstr "MoE 路由专家权重组。"
+
+#: ../../source/explanation/selection-semantics.md:31
+msgid "shared experts."
+msgstr "共享专家。"
+
+#: ../../source/explanation/selection-semantics.md:32
+msgid "MLA-style attention projections."
+msgstr "MLA 风格的注意力投影。"
+
+#: ../../source/explanation/selection-semantics.md:33
+msgid "fused gate/up/down expert tensors."
+msgstr "融合的 gate/up/down 专家张量。"
+
+#: ../../source/explanation/selection-semantics.md:35
+msgid ""
+"A regex can match a name, but it does not by itself prove that the "
+"resulting set is a safe inference unit."
+msgstr "正则表达式可以匹配名称，但本身不能证明所得集合是安全的推理单元。"
+
+#: ../../source/explanation/selection-semantics.md:37
+msgid "Fused-unit boundary"
+msgstr "融合单元边界"
+
+#: ../../source/explanation/selection-semantics.md:39
+msgid ""
+"Some tensors are consumed together by inference kernels. Splitting them "
+"can produce an output that is structurally inconsistent or not loadable."
+msgstr "某些张量会被推理内核一起使用。拆分它们可能产生结构不一致或无法加载的输出。"
+
+#: ../../source/explanation/selection-semantics.md:41
+msgid "Examples include:"
+msgstr "示例包括："
+
+#: ../../source/explanation/selection-semantics.md:43
+msgid "MLA-style projection pairs."
+msgstr "MLA 风格的投影对。"
+
+#: ../../source/explanation/selection-semantics.md:44
+msgid "gate/up/down projections inside expert banks."
+msgstr "专家权重组内的 gate/up/down 投影。"
+
+#: ../../source/explanation/selection-semantics.md:45
+msgid "partial experts inside routed expert groups."
+msgstr "路由专家组内的部分专家。"
+
+#: ../../source/explanation/selection-semantics.md:47
+msgid ""
+"The selection model therefore treats fused groups as boundaries that "
+"should be selected together."
+msgstr "因此，选择模型将融合组视为应当一起选择的边界。"
+
+#: ../../source/explanation/selection-semantics.md:49
+msgid "Dry-run as selection review"
+msgstr "将空运行作为选择审查"
+
+#: ../../source/explanation/selection-semantics.md:51
+msgid ""
+"Dry-run mode is the selection review step. It lets you check selected "
+"counts, unmatched selectors, layout constraints, and fused-unit "
+"constraints before writing weights."
+msgstr "空运行模式是选择审查步骤。它允许你在写入权重之前检查选中数量、未匹配的选择器、布局约束和融合单元约束。"
+
+#: ../../source/explanation/selection-semantics.md:53
+msgid ""
+"A quantization command should not be considered ready until its dry-run "
+"output matches the intended selection."
+msgstr "在空运行输出与预期选择一致之前，不应认为量化命令已经准备就绪。"

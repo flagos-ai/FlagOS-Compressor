@@ -1,0 +1,226 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/explanation/processing-pipeline.md:1
+msgid "Processing pipeline"
+msgstr "处理流水线"
+
+#: ../../source/explanation/processing-pipeline.md:3
+msgid ""
+"FlagOS-Compressor processes local checkpoint directories through explicit"
+" inspection, planning, transformation, export, and validation phases."
+msgstr "FlagOS-Compressor 通过明确的检查、规划、转换、导出和验证阶段处理本地 checkpoint 目录。"
+
+#: ../../source/explanation/processing-pipeline.md:5
+msgid "Source checkpoint assumptions"
+msgstr "源 checkpoint 假设"
+
+#: ../../source/explanation/processing-pipeline.md:7
+msgid ""
+"The input is a local [Hugging Face](https://huggingface.co/docs) "
+"`safetensors` model directory. A typical input contains:"
+msgstr "输入是本地 [Hugging Face](https://huggingface.co/docs) `safetensors` 模型目录。典型输入包含："
+
+#: ../../source/explanation/processing-pipeline.md:16
+msgid ""
+"The tool does not download models. The source checkpoint must already "
+"exist on local storage."
+msgstr "该工具不会下载模型。源 checkpoint 必须已经存在于本地存储中。"
+
+#: ../../source/explanation/processing-pipeline.md:18
+msgid "Inspection phase"
+msgstr "检查阶段"
+
+#: ../../source/explanation/processing-pipeline.md:20
+msgid ""
+"Inspection reads structural metadata before weights are converted or "
+"quantized. It identifies:"
+msgstr "检查会在权重转换或量化之前读取结构元数据，并识别："
+
+#: ../../source/explanation/processing-pipeline.md:22
+msgid "model configuration."
+msgstr "模型配置。"
+
+#: ../../source/explanation/processing-pipeline.md:23
+msgid "shard index entries."
+msgstr "分片索引条目。"
+
+#: ../../source/explanation/processing-pipeline.md:24
+msgid "checkpoint weight names."
+msgstr "checkpoint 权重名称。"
+
+#: ../../source/explanation/processing-pipeline.md:25
+msgid "tensor shapes."
+msgstr "张量形状。"
+
+#: ../../source/explanation/processing-pipeline.md:26
+msgid "recognized source formats."
+msgstr "可识别的源格式。"
+
+#: ../../source/explanation/processing-pipeline.md:27
+msgid ""
+"selectable linear, attention, MLP, routed expert, and shared expert "
+"groups."
+msgstr "可选择的 Linear、attention、MLP、路由专家和共享专家分组。"
+
+#: ../../source/explanation/processing-pipeline.md:29
+msgid ""
+"Inspection is the safest way to decide selectors and detect unfamiliar "
+"layouts."
+msgstr "检查是确定选择器并检测陌生布局的最安全方式。"
+
+#: ../../source/explanation/processing-pipeline.md:31
+msgid "Planning phase"
+msgstr "规划阶段"
+
+#: ../../source/explanation/processing-pipeline.md:33
+msgid ""
+"Planning combines command-line options and optional recipe values into "
+"one processing plan. The plan resolves:"
+msgstr "规划会将命令行选项与可选 recipe 值合并为一个处理计划。该计划会解析："
+
+#: ../../source/explanation/processing-pipeline.md:35
+msgid "selected and excluded weights."
+msgstr "选中和排除的权重。"
+
+#: ../../source/explanation/processing-pipeline.md:36
+msgid "quantization method."
+msgstr "量化方法。"
+
+#: ../../source/explanation/processing-pipeline.md:37
+msgid "weight and activation bit widths."
+msgstr "权重和激活位宽。"
+
+#: ../../source/explanation/processing-pipeline.md:38
+msgid "group or channel strategy."
+msgstr "分组或通道策略。"
+
+#: ../../source/explanation/processing-pipeline.md:39
+msgid "group size."
+msgstr "group size。"
+
+#: ../../source/explanation/processing-pipeline.md:40
+msgid "output format."
+msgstr "输出格式。"
+
+#: ../../source/explanation/processing-pipeline.md:41
+msgid "calibration settings when required."
+msgstr "需要时使用的校准设置。"
+
+#: ../../source/explanation/processing-pipeline.md:43
+msgid ""
+"Dry-run mode stops after plan validation. This makes it useful for "
+"checking selectors and constraints before writing large outputs."
+msgstr "空运行模式会在计划验证后停止，因此适合在写入大型输出之前检查选择器和约束。"
+
+#: ../../source/explanation/processing-pipeline.md:45
+msgid "Transformation phase"
+msgstr "转换阶段"
+
+#: ../../source/explanation/processing-pipeline.md:47
+msgid "The transformation phase operates on selected weights:"
+msgstr "转换阶段作用于选中的权重："
+
+#: ../../source/explanation/processing-pipeline.md:49
+msgid "conversion turns recognized MXFP4 or block FP8 tensors into BF16."
+msgstr "转换会将可识别的 MXFP4 或块 FP8 张量转为 BF16。"
+
+#: ../../source/explanation/processing-pipeline.md:50
+msgid "MSE quantization creates INT4 or INT8 weight representations."
+msgstr "MSE 量化会创建 INT4 或 INT8 权重表示。"
+
+#: ../../source/explanation/processing-pipeline.md:51
+msgid ""
+"calibrated methods use calibration data to produce GPTQ, AWQ, or "
+"AutoRound outputs."
+msgstr "校准方法会使用校准数据生成 GPTQ、AWQ 或 AutoRound 输出。"
+
+#: ../../source/explanation/processing-pipeline.md:52
+msgid ""
+"unselected source-quantized weights are preserved as BF16 when required "
+"by the output policy."
+msgstr "当输出策略要求时，未选中的源量化权重会以 BF16 保留。"
+
+#: ../../source/explanation/processing-pipeline.md:54
+msgid ""
+"Unsupported or unknown low-precision layouts are refused rather than "
+"guessed."
+msgstr "不支持或未知的低精度布局会被拒绝，而不是被猜测处理。"
+
+#: ../../source/explanation/processing-pipeline.md:56
+msgid "Export phase"
+msgstr "导出阶段"
+
+#: ../../source/explanation/processing-pipeline.md:58
+msgid ""
+"Export writes a complete output model directory. Depending on the "
+"operation, this may include:"
+msgstr "导出会写入完整的输出模型目录。根据操作不同，这可能包括："
+
+#: ../../source/explanation/processing-pipeline.md:60
+msgid "updated `config.json`."
+msgstr "更新后的 `config.json`。"
+
+#: ../../source/explanation/processing-pipeline.md:61
+msgid "`model.safetensors.index.json`."
+msgstr "`model.safetensors.index.json`。"
+
+#: ../../source/explanation/processing-pipeline.md:62
+msgid "generated `model-*.safetensors` shards."
+msgstr "生成的 `model-*.safetensors` 分片。"
+
+#: ../../source/explanation/processing-pipeline.md:63
+msgid "`quantization_manifest.json`."
+msgstr "`quantization_manifest.json`。"
+
+#: ../../source/explanation/processing-pipeline.md:64
+msgid "`quantization_report.json`."
+msgstr "`quantization_report.json`。"
+
+#: ../../source/explanation/processing-pipeline.md:65
+msgid "`conversion_report.json`."
+msgstr "`conversion_report.json`。"
+
+#: ../../source/explanation/processing-pipeline.md:66
+msgid "tokenizer and supporting files copied from the source."
+msgstr "从源目录复制的 tokenizer 和支持文件。"
+
+#: ../../source/explanation/processing-pipeline.md:68
+msgid ""
+"The complete directory is the artifact. Individual shard files are not "
+"enough for runtime loading."
+msgstr "完整目录才是构件。单独的分片文件不足以进行运行时加载。"
+
+#: ../../source/explanation/processing-pipeline.md:70
+msgid "Validation phase"
+msgstr "验证阶段"
+
+#: ../../source/explanation/processing-pipeline.md:72
+msgid ""
+"Validation checks consistency after export. It is designed to catch "
+"structural and metadata errors before runtime testing."
+msgstr "验证会在导出后检查一致性，用于在运行时测试之前捕获结构和元数据错误。"
+
+#: ../../source/explanation/processing-pipeline.md:74
+msgid ""
+"Validation is not a substitute for inference loading, accuracy "
+"evaluation, memory profiling, or throughput measurement."
+msgstr "验证不能替代推理加载、精度评估、内存分析或吞吐量测量。"
