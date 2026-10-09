@@ -1,0 +1,236 @@
+﻿# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FlagOS Community
+# This file is distributed under the same license as the FlagOS-Compressor
+# Documentation package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlagOS-Compressor Documentation \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-20 16:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/how-to/select-layers.md:1
+msgid "Select layers"
+msgstr "选择层"
+
+#: ../../source/how-to/select-layers.md:3
+msgid ""
+"Select layers deliberately when you need to quantize only part of a "
+"checkpoint or exclude weights that should remain unquantized."
+msgstr "当你需要仅量化检查点的一部分，或排除应保持未量化的权重时，请有针对性地选择层。"
+
+#: ../../source/how-to/select-layers.md:5
+msgid "Prerequisites"
+msgstr "前置条件"
+
+#: ../../source/how-to/select-layers.md:7
+msgid "Before selecting layers, run inspection:"
+msgstr "选择层之前，先运行检查："
+
+#: ../../source/how-to/select-layers.md:13
+msgid ""
+"Use the reported module groups and checkpoint weight names as the source "
+"of truth. Do not infer names from the model name alone."
+msgstr "以报告的模块组和检查点权重名称为准。不要仅根据模型名称推断名称。"
+
+#: ../../source/how-to/select-layers.md:15
+msgid "Choose built-in selectors first"
+msgstr "优先选择内置选择器"
+
+#: ../../source/how-to/select-layers.md:17
+msgid ""
+"Built-in selectors are safer than regex for recognized fused layouts and "
+"expert banks."
+msgstr "对于已识别的融合布局和专家权重组，内置选择器比正则表达式更安全。"
+
+#: ../../source/how-to/select-layers.md
+msgid "Selector"
+msgstr "选择器"
+
+#: ../../source/how-to/select-layers.md
+msgid "Coverage"
+msgstr "覆盖范围"
+
+#: ../../source/how-to/select-layers.md
+msgid "`linear`"
+msgstr "`linear`"
+
+#: ../../source/how-to/select-layers.md
+msgid ""
+"all recognized attention, MLP, shared expert, and routed expert linear "
+"layers"
+msgstr "所有已识别的注意力、MLP、共享专家和路由专家线性层"
+
+#: ../../source/how-to/select-layers.md
+msgid "`attention`"
+msgstr "`attention`"
+
+#: ../../source/how-to/select-layers.md
+msgid "Q/K/V/O, MLA, and other recognized attention projections"
+msgstr "Q/K/V/O、MLA 以及其他已识别的注意力投影"
+
+#: ../../source/how-to/select-layers.md
+msgid "`mlp`"
+msgstr "`mlp`"
+
+#: ../../source/how-to/select-layers.md
+msgid "non-routed-expert MLP linear layers"
+msgstr "非路由专家的 MLP 线性层"
+
+#: ../../source/how-to/select-layers.md
+msgid "`moe`"
+msgstr "`moe`"
+
+#: ../../source/how-to/select-layers.md
+msgid "routed experts and shared experts"
+msgstr "路由专家和共享专家"
+
+#: ../../source/how-to/select-layers.md
+msgid "`moe.routed`"
+msgstr "`moe.routed`"
+
+#: ../../source/how-to/select-layers.md
+msgid "routed experts only"
+msgstr "仅路由专家"
+
+#: ../../source/how-to/select-layers.md
+msgid "`moe.shared`"
+msgstr "`moe.shared`"
+
+#: ../../source/how-to/select-layers.md
+msgid "shared experts only"
+msgstr "仅共享专家"
+
+#: ../../source/how-to/select-layers.md:29
+msgid "`linear` does not include embeddings or `lm_head`."
+msgstr "`linear` 不包括嵌入层或 `lm_head`。"
+
+#: ../../source/how-to/select-layers.md:32
+msgid "Combine selectors"
+msgstr "组合选择器"
+
+#: ../../source/how-to/select-layers.md:34
+msgid "Multiple `--select` and `--select-name` options form a union:"
+msgstr "多个 `--select` 和 `--select-name` 选项会形成并集："
+
+#: ../../source/how-to/select-layers.md:49
+msgid "Expected selection: routed experts plus attention projections."
+msgstr "预期选择结果：路由专家和注意力投影。"
+
+#: ../../source/how-to/select-layers.md:51
+msgid "Exclude by selector or name"
+msgstr "按选择器或名称排除"
+
+#: ../../source/how-to/select-layers.md:53
+msgid "Use exclusions to subtract from the selected set:"
+msgstr "使用排除规则从已选集合中扣除内容："
+
+#: ../../source/how-to/select-layers.md:68
+msgid "You can also exclude a built-in group:"
+msgstr "你也可以排除一个内置组："
+
+#: ../../source/how-to/select-layers.md:75
+msgid "Select by checkpoint weight name"
+msgstr "按检查点权重名称选择"
+
+#: ../../source/how-to/select-layers.md:77
+msgid "Use `--select-name` only when built-in selectors are too broad:"
+msgstr "仅当内置选择器范围过宽时，才使用 `--select-name`："
+
+#: ../../source/how-to/select-layers.md:91
+msgid ""
+"Regex patterns match checkpoint weight names. Use shell single quotes on "
+"POSIX shells to avoid accidental escaping."
+msgstr "正则表达式匹配检查点权重名称。在 POSIX shell 中使用单引号，以避免意外转义。"
+
+#: ../../source/how-to/select-layers.md:93
+msgid "Avoid splitting fused units"
+msgstr "避免拆分融合单元"
+
+#: ../../source/how-to/select-layers.md:96
+msgid ""
+"Do not select only part of a fused inference unit or routed expert bank. "
+"Partial selection can produce artifacts that are structurally invalid or "
+"unusable by inference kernels."
+msgstr "不要只选择融合推理单元或路由专家权重组的一部分。部分选择可能生成结构无效或无法被推理内核使用的产物。"
+
+#: ../../source/how-to/select-layers.md:99
+msgid "Avoid splitting:"
+msgstr "避免拆分："
+
+#: ../../source/how-to/select-layers.md:101
+msgid "MLA-style fused pairs such as `q_a_proj` and `kv_a_proj_with_mqa`"
+msgstr "MLA 风格的融合对，例如 `q_a_proj` 和 `kv_a_proj_with_mqa`"
+
+#: ../../source/how-to/select-layers.md:102
+msgid "fused expert bank gate/up/down groups"
+msgstr "融合专家权重组的 gate/up/down 组"
+
+#: ../../source/how-to/select-layers.md:103
+msgid "partial experts inside a routed expert bank."
+msgstr "路由专家权重组中的部分专家。"
+
+#: ../../source/how-to/select-layers.md:105
+msgid ""
+"Use built-in selectors such as `attention`, `moe`, or `moe.routed` for "
+"fused structures."
+msgstr "对于融合结构，使用 `attention`、`moe` 或 `moe.routed` 等内置选择器。"
+
+#: ../../source/how-to/select-layers.md:107
+msgid "Handle auxiliary indexer weights"
+msgstr "处理辅助索引器权重"
+
+#: ../../source/how-to/select-layers.md:109
+msgid ""
+"Some models include `self_attn.indexer` auxiliary modules. If these are "
+"selected unintentionally, exclude them:"
+msgstr "某些模型包含 `self_attn.indexer` 辅助模块。如果这些模块被意外选中，请将其排除："
+
+#: ../../source/how-to/select-layers.md:115
+msgid "Always rerun the dry-run after adding the exclusion."
+msgstr "添加排除规则后，务必重新运行 dry-run。"
+
+#: ../../source/how-to/select-layers.md:117
+msgid "Verify the selection"
+msgstr "验证选择结果"
+
+#: ../../source/how-to/select-layers.md:119
+msgid "A selection task is complete only after dry-run verification:"
+msgstr "只有完成 dry-run 验证后，选择任务才算完成："
+
+#: ../../source/how-to/select-layers.md:133
+msgid "Check that:"
+msgstr "检查以下内容："
+
+#: ../../source/how-to/select-layers.md:135
+msgid "selected counts match the model structure"
+msgstr "已选数量与模型结构一致"
+
+#: ../../source/how-to/select-layers.md:136
+msgid "no `selectors did not match` message appears"
+msgstr "没有出现 `selectors did not match` 消息"
+
+#: ../../source/how-to/select-layers.md:137
+msgid "no fused pair or expert bank is split"
+msgstr "没有拆分任何融合对或专家权重组"
+
+#: ../../source/how-to/select-layers.md:138
+msgid "selected layers satisfy bit-width, strategy, and group-size constraints"
+msgstr "已选层满足位宽、策略和组大小约束"
+
+#: ../../source/how-to/select-layers.md:139
+msgid ""
+"calibrated selection covers every required expert, and calibration data "
+"routes tokens through each selected expert"
+msgstr "校准选择覆盖每个必需的专家，并且校准数据会将 token 路由到每个已选专家"
+
