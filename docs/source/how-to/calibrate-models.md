@@ -1,6 +1,6 @@
 # Calibrate models
 
-Use calibration data for GPTQ, AWQ, AutoRound, or another method that needs representative activations. Calibrated execution uses the original Transformers model definition and requires `transformers>=5,<6` plus an available selected backend. Unlike the non-calibrated path, it does not silently use CPU fallback when a requested accelerator is unavailable.
+Use calibration data for GPTQ, AWQ, AutoRound, or another method that needs representative activations. Calibrated execution uses the original Transformers model definition and requires `transformers>=5.5,<6` plus an available selected backend. Unlike the non-calibrated path, it does not silently use CPU fallback when a requested accelerator is unavailable.
 
 ## Prerequisites
 
