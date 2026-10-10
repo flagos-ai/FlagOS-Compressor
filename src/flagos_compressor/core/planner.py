@@ -39,7 +39,7 @@ def _fused_expert_proj_kind(tensor: TensorInfo) -> str | None:
     """Return the projection leaf of a fused routed-expert bank, else None."""
     if tensor.module_kind != "moe_routed_fused":
         return None
-    return tensor.name.split(".")[-1]
+    return tensor.effective_name.split(".")[-1]
 
 
 def _is_fused_moe_expert(tensor: TensorInfo) -> bool:
@@ -54,6 +54,10 @@ def _is_fused_moe_expert(tensor: TensorInfo) -> bool:
 
 
 def _input_format_for(tensor: TensorInfo) -> FormatSpec | None:
+    if tensor.role == "weight" and tensor.scale_name and tensor.storage_format in {
+        "mxfp8_e4m3_e8m0", "nvfp4"
+    }:
+        return FormatSpec(tensor.storage_format)
     if _is_scaled_fp4(tensor):
         return FormatSpec("fp4_e2m1_e8m0")
     if _is_scaled_fp8(tensor):
@@ -95,17 +99,11 @@ def _plan_unselected_weight(
             "and a compatible inference kernel."
         )
 
-    if _is_scaled_fp4(tensor):
+    source_format = _input_format_for(tensor)
+    if tensor.scale_name and source_format is not None:
         plan.add_action(
             tensor,
-            input_format=FormatSpec("fp4_e2m1_e8m0"),
-            output_format=_bf16_output(),
-            rule_name="unselected_convert_bf16",
-        )
-    elif _is_scaled_fp8(tensor):
-        plan.add_action(
-            tensor,
-            input_format=FormatSpec("fp8_block_e8m0", {"block_size": 128}),
+            input_format=source_format,
             output_format=_bf16_output(),
             rule_name="unselected_convert_bf16",
         )
@@ -121,7 +119,7 @@ def _plan_unselected_weight(
 
 def _fused_bank_module(tensor: TensorInfo) -> str:
     """The ``...experts`` module prefix shared by one routed bank's projections."""
-    return tensor.name.rsplit(".", 1)[0]
+    return tensor.effective_name.rsplit(".", 1)[0]
 
 
 def _plan_fused_moe_expert(
@@ -151,13 +149,13 @@ def _plan_fused_moe_expert(
         )
     if len(shape) != 3:
         raise ValueError(
-            f"Selected fused expert {tensor.name!r} has shape {shape}; expected 3D"
+            f"Selected fused expert {tensor.effective_name!r} has shape {shape}; expected 3D"
         )
     num_experts = int(shape[0])
     out_features, in_features = layout.per_expert_out_in(proj_kind, shape)
     if proj_kind == "gate_up_proj" and int(shape[1] if layout.out_in_order else shape[2]) % 2:
         raise ValueError(
-            f"Selected fused expert {tensor.name!r} has an odd fused output "
+            f"Selected fused expert {tensor.effective_name!r} has an odd fused output "
             "dimension; cannot split into gate and up projections"
         )
     if (
@@ -166,12 +164,12 @@ def _plan_fused_moe_expert(
         and in_features % policy.group_size
     ):
         raise ValueError(
-            f"Selected fused expert {tensor.name!r} has in_features={in_features}; "
+            f"Selected fused expert {tensor.effective_name!r} has in_features={in_features}; "
             f"must be divisible by group_size={policy.group_size}"
         )
     if policy.num_bits == 4 and in_features % 8:
         raise ValueError(
-            f"Selected fused expert {tensor.name!r} has in_features={in_features}; "
+            f"Selected fused expert {tensor.effective_name!r} has in_features={in_features}; "
             "INT4 pack-quantized storage requires in_features divisible by 8"
         )
     plan.add_action(
@@ -220,13 +218,13 @@ def _validate_fused_bank_closure(
     selected_by_module: dict[str, set[str]] = defaultdict(set)
     for tensor in selected_banks:
         selected_by_module[_fused_bank_module(tensor)].add(
-            tensor.name.split(".")[-1]
+            tensor.effective_name.split(".")[-1]
         )
     all_by_module: dict[str, set[str]] = defaultdict(set)
     for tensor in profile.tensors.values():
         if tensor.module_kind == "moe_routed_fused":
             all_by_module[_fused_bank_module(tensor)].add(
-                tensor.name.split(".")[-1]
+                tensor.effective_name.split(".")[-1]
             )
     errors: list[str] = []
     for module, chosen in selected_by_module.items():
@@ -255,16 +253,11 @@ def build_convert_plan(profile: ModelProfile) -> ExecutionPlan:
     for tensor in profile.tensors.values():
         if tensor.role != "weight":
             continue
-        if _is_scaled_fp4(tensor):
+        source_format = _input_format_for(tensor)
+        if tensor.scale_name and source_format is not None:
             plan.add_action(
                 tensor,
-                input_format=FormatSpec("fp4_e2m1_e8m0"),
-                output_format=_bf16_output(),
-            )
-        elif _is_scaled_fp8(tensor):
-            plan.add_action(
-                tensor,
-                input_format=FormatSpec("fp8_block_e8m0", {"block_size": 128}),
+                input_format=source_format,
                 output_format=_bf16_output(),
             )
         else:
@@ -320,7 +313,7 @@ def build_quantize_plan(
                 and not policy.is_w8a8
             ):
                 raise ValueError(
-                    f"Selected routed MoE tensor {tensor.name!r} cannot use "
+                    f"Selected routed MoE tensor {tensor.effective_name!r} cannot use "
                     "channel strategy in W8A16; vLLM WNA16 MoE requires group "
                     "strategy. Use --activation-bits 8 for W8A8"
                 )
@@ -328,7 +321,7 @@ def build_quantize_plan(
             if _is_fused_moe_expert(tensor):
                 if moe_layout is None:
                     raise ValueError(
-                        f"Selected fused routed-expert bank {tensor.name!r} "
+                        f"Selected fused routed-expert bank {tensor.effective_name!r} "
                         "requires a MoeLayout. Pass moe_layout=select_moe_layout"
                         "(config) so the expert axis order is known."
                     )
@@ -338,14 +331,14 @@ def build_quantize_plan(
             input_format = _input_format_for(tensor)
             if input_format is None:
                 raise ValueError(
-                    f"Selected tensor {tensor.name!r} cannot be quantized to "
+                    f"Selected tensor {tensor.effective_name!r} cannot be quantized to "
                     f"INT{policy.num_bits} "
                     f"(dtype={tensor.dtype}, storage_format={tensor.storage_format}, shape={tensor.shape})"
                 )
             logical_shape = tensor.effective_logical_shape
             if len(logical_shape) != 2:
                 raise ValueError(
-                    f"Selected tensor {tensor.name!r} has logical shape {logical_shape}; "
+                    f"Selected tensor {tensor.effective_name!r} has logical shape {logical_shape}; "
                     "expected a 2D weight"
                 )
             if (
@@ -356,12 +349,12 @@ def build_quantize_plan(
                 )
             ):
                 raise ValueError(
-                    f"Selected tensor {tensor.name!r} has logical shape {logical_shape}; "
+                    f"Selected tensor {tensor.effective_name!r} has logical shape {logical_shape}; "
                     f"in_features must be divisible by group_size={policy.group_size}"
                 )
             if policy.num_bits == 4 and logical_shape[1] % 8:
                 raise ValueError(
-                    f"Selected tensor {tensor.name!r} has in_features="
+                    f"Selected tensor {tensor.effective_name!r} has in_features="
                     f"{logical_shape[1]}; INT4 pack-quantized storage requires "
                     "in_features divisible by 8"
                 )
@@ -399,12 +392,12 @@ def build_quantize_plan(
             _plan_unselected_weight(plan, tensor, policy.unselected)
     validate_fusion_closure(
         (
-            tensor.name
+            tensor.effective_name
             for tensor in profile.tensors.values()
-            if tensor.role == "weight" and tensor.name.endswith(".weight")
+            if tensor.role == "weight" and tensor.effective_name.endswith(".weight")
         ),
         (
-            action.tensor.name
+            action.tensor.effective_name
             for action in plan.actions
             if action.output_format.name
             in {
@@ -491,7 +484,7 @@ def build_per_selector_plan(
         if _is_fused_moe_expert(tensor):
             if moe_layout is None:
                 raise ValueError(
-                    f"Selected fused routed-expert bank {tensor.name!r} "
+                    f"Selected fused routed-expert bank {tensor.effective_name!r} "
                     "requires a MoeLayout"
                 )
             _plan_fused_moe_expert(
@@ -508,25 +501,25 @@ def build_per_selector_plan(
         if input_format is None:
             raise ValueError(
                 f"Scheme selector {rule.label!r} selected unsupported tensor "
-                f"{tensor.name!r} (dtype={tensor.dtype}, "
+                f"{tensor.effective_name!r} (dtype={tensor.dtype}, "
                 f"storage_format={tensor.storage_format}, shape={tensor.shape})"
             )
         logical_shape = tensor.effective_logical_shape
         if len(logical_shape) != 2:
             raise ValueError(
-                f"Per-selector input {tensor.name!r} has logical shape "
+                f"Per-selector input {tensor.effective_name!r} has logical shape "
                 f"{logical_shape}; expected a 2D weight"
             )
         if rule.strategy == "group" and (
             group_size is None or logical_shape[1] % group_size
         ):
             raise ValueError(
-                f"Per-selector input {tensor.name!r} has in_features="
+                f"Per-selector input {tensor.effective_name!r} has in_features="
                 f"{logical_shape[1]}; must be divisible by group_size={group_size}"
             )
         if num_bits == 4 and logical_shape[1] % 8:
             raise ValueError(
-                f"Per-selector input {tensor.name!r} has in_features="
+                f"Per-selector input {tensor.effective_name!r} has in_features="
                 f"{logical_shape[1]}; INT4 pack-quantized storage requires "
                 "in_features divisible by 8"
             )
@@ -556,12 +549,12 @@ def build_per_selector_plan(
             ),
             rule_name=f"selected_{rule.label}_{rule.scheme}",
         )
-        selected_by_scheme[scheme].append(tensor.name)
+        selected_by_scheme[scheme].append(tensor.effective_name)
 
     all_logical_weights = [
-        tensor.name
+        tensor.effective_name
         for tensor in profile.tensors.values()
-        if tensor.role == "weight" and tensor.name.endswith(".weight")
+        if tensor.role == "weight" and tensor.effective_name.endswith(".weight")
     ]
     for selected in selected_by_scheme.values():
         validate_fusion_closure(all_logical_weights, selected)

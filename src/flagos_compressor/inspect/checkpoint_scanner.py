@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 from flagos_compressor.core.dtypes import tensor_dtype_name
@@ -84,6 +85,10 @@ def scan_hf_safetensors(model_path: str | Path) -> ModelProfile:
 
     for tensor_name, info in raw.items():
         scale_name = scale_map.get(tensor_name)
+        prefix = tensor_name.rsplit(".", 1)[0]
+        global_scale_name = prefix + ".weight_global_scale"
+        if global_scale_name not in raw:
+            global_scale_name = None
         role = (
             "scale"
             if tensor_name in scale_targets
@@ -101,12 +106,29 @@ def scan_hf_safetensors(model_path: str | Path) -> ModelProfile:
                     info["shape"],
                     info["element_size"],
                     shapes.get(scale_name),
+                    weight_dtype=info["dtype"],
+                    scale_dtype=raw[scale_name]["dtype"],
+                    global_scale_shape=shapes.get(global_scale_name),
                 )
         logical_name = (
             manifest_spec.get("logical_name", tensor_name)
             if manifest_spec
             else tensor_name
         )
+        auxiliary_names = ()
+        if storage_format == "nvfp4":
+            if not tensor_name.endswith(".weight_packed"):
+                raise ValueError(f"NVFP4 weight must end in .weight_packed: {tensor_name}")
+            logical_name = prefix + ".weight"
+            if logical_name in raw:
+                raise ValueError(f"NVFP4 logical weight already exists: {logical_name}")
+            auxiliary_names = tuple(
+                name for name in (
+                    global_scale_name, prefix + ".input_global_scale",
+                ) if name in raw
+            )
+        else:
+            global_scale_name = None
         module_kind, tags = (
             classify_weight(logical_name) if role == "weight" else (None, ())
         )
@@ -127,6 +149,13 @@ def scan_hf_safetensors(model_path: str | Path) -> ModelProfile:
             logical_shape=logical_shape,
             module_kind=module_kind,
             tags=tags,
+            logical_name=logical_name,
+            global_scale_name=global_scale_name,
+            auxiliary_names=auxiliary_names,
         )
 
+    # Auxiliary source scales are metadata, never independent model weights.
+    for tensor in list(profile.tensors.values()):
+        for name in tensor.auxiliary_names:
+            profile.tensors[name] = replace(profile.tensors[name], role="scale")
     return profile

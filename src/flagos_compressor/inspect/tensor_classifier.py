@@ -101,7 +101,7 @@ def classify_weight(name: str) -> tuple[str | None, tuple[str, ...]]:
 def infer_logical_shape(
     storage_shape: tuple[int, ...], storage_format: str | None
 ) -> tuple[int, ...]:
-    if storage_format == "fp4_e2m1_e8m0" and len(storage_shape) == 2:
+    if storage_format in {"fp4_e2m1_e8m0", "nvfp4"} and len(storage_shape) == 2:
         return (storage_shape[0], storage_shape[1] * 2)
     return storage_shape
 
@@ -110,8 +110,14 @@ def infer_storage_format(
     weight_shape: tuple[int, ...],
     element_size: int,
     scale_shape: tuple[int, ...] | None,
+    *,
+    weight_dtype: str | None = None,
+    scale_dtype: str | None = None,
+    global_scale_shape: tuple[int, ...] | None = None,
 ) -> str | None:
     """Infer a source quantization format using strict layout validation.
+
+    MXFP8 and NVFP4 additionally require their exact dtype and scale layout.
 
     A byte-sized weight paired with a same-rows 2D scale is treated as
     MXFP4 E2M1 + E8M0 (per-row groups). A byte-sized weight paired with a
@@ -123,6 +129,22 @@ def infer_storage_format(
         return None
     if len(weight_shape) != 2:
         return None
+    rows, cols = weight_shape
+    if (
+        weight_dtype == "float8_e4m3fn"
+        and scale_dtype in {"uint8", "float8_e8m0fnu"}
+        and cols % 32 == 0
+        and scale_shape == (rows, cols // 32)
+    ):
+        return "mxfp8_e4m3_e8m0"
+    if (
+        weight_dtype == "uint8"
+        and scale_dtype == "float8_e4m3fn"
+        and global_scale_shape in {(), (1,)}
+        and cols % 8 == 0
+        and scale_shape == (rows, cols // 8)
+    ):
+        return "nvfp4"
     # MXFP4 stores two values per weight byte and one scale per 32 logical
     # values. Merely checking that rows match would misclassify row-wise INT8.
     if (
