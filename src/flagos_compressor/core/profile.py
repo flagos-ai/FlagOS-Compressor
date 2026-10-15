@@ -18,6 +18,7 @@ class TensorInfo:
     logical_shape: tuple[int, ...] | None = None
     module_kind: str | None = None
     tags: tuple[str, ...] = ()
+    storage_params: dict[str, Any] = field(default_factory=dict)
     logical_name: str | None = None
     global_scale_name: str | None = None
     auxiliary_names: tuple[str, ...] = ()
@@ -83,6 +84,7 @@ class ModelProfile:
                 ),
                 module_kind=item.get("module_kind"),
                 tags=tuple(item.get("tags") or ()),
+                storage_params=dict(item.get("storage_params") or {}),
                 logical_name=item.get("logical_name"),
                 global_scale_name=item.get("global_scale_name"),
                 auxiliary_names=tuple(item.get("auxiliary_names") or ()),

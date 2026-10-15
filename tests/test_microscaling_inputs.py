@@ -36,7 +36,7 @@ def test_nvfp4_all_nibbles_and_inverse_global_scale():
         nvfp4_dequant(packed, scale, torch.tensor(0.))
 
 
-def make_source(path):
+def make_source(path, mxfp8_scale_suffix=".weight_scale"):
     path.mkdir()
     state = {}
     for proj in ("w1", "w2", "w3"):
@@ -49,7 +49,7 @@ def make_source(path):
     for proj in ("q_proj", "k_proj", "v_proj", "o_proj"):
         base = "model.layers.0.self_attn." + proj
         state[base + ".weight"] = torch.ones(2, 32, dtype=torch.float8_e4m3fn)
-        state[base + ".weight_scale_inv"] = torch.full((2, 1), 126, dtype=torch.uint8)
+        state[base + mxfp8_scale_suffix] = torch.full((2, 1), 126, dtype=torch.uint8)
     state["model.embed_tokens.weight"] = torch.ones(4, 32, dtype=torch.bfloat16)
     # Put all auxiliary scales in a separate shard to exercise their removal
     # and cross-shard lookup, including a generated .weight_scale collision.
@@ -65,9 +65,10 @@ def make_source(path):
 
 
 @pytest.mark.parametrize("quantize", [False, True])
-def test_mixed_microscaling_checkpoint_end_to_end(tmp_path, quantize):
+@pytest.mark.parametrize("scale_suffix", [".weight_scale", ".weight_scale_inv"])
+def test_mixed_microscaling_checkpoint_end_to_end(tmp_path, quantize, scale_suffix):
     source, output = tmp_path / "source", tmp_path / "output"
-    make_source(source)
+    make_source(source, scale_suffix)
     profile = scan_hf_safetensors(source)
     assert profile.summary()["storage_formats"] == {"mxfp8_e4m3_e8m0": 4, "nvfp4": 3}
     profile = ModelProfile.from_dict(profile.to_dict())
@@ -100,6 +101,11 @@ def test_mixed_microscaling_checkpoint_end_to_end(tmp_path, quantize):
         assert rescanned.tensors[base + ".weight"].effective_logical_shape == (2, 32)
     else:
         torch.testing.assert_close(state[base + ".weight"].float(), expected)
+        for proj in ("q_proj", "k_proj", "v_proj", "o_proj"):
+            name = f"model.layers.0.self_attn.{proj}.weight"
+            assert state[name].dtype == torch.bfloat16
+            torch.testing.assert_close(state[name].float(), torch.full((2, 32), .5))
+        assert not any("scale" in name for name in state)
         assert "quantization_config" not in json.loads((output / "config.json").read_text())
 
 
@@ -114,3 +120,70 @@ def test_nvfp4_unselected_experts_are_decoded_and_renamed(tmp_path):
     validation = validate_artifact(output)
     assert validation["valid"], validation["errors"]
     assert validation["int8_tensors"] == 4
+
+
+@pytest.mark.parametrize("quantize", [False, True])
+def test_standard_mxfp8_checkpoint(tmp_path, quantize):
+    source, output = tmp_path / "source", tmp_path / "output"
+    source.mkdir()
+    name = "model.layers.0.self_attn.q_proj"
+    save_file({
+        name + ".weight": torch.ones(2, 64, dtype=torch.float8_e4m3fn),
+        name + ".weight_scale": torch.tensor([[126, 128], [127, 125]], dtype=torch.uint8),
+    }, source / "model.safetensors")
+    (source / "config.json").write_text("{}")
+    profile = scan_hf_safetensors(source)
+    assert profile.tensors[name + ".weight"].storage_format == "mxfp8_e4m3_e8m0"
+    plan = (build_quantize_plan(profile, QuantizationPolicy(
+        selections=("linear",), num_bits=8, activation_num_bits=8,
+        strategy="channel", n_candidates=8,
+    )) if quantize else build_convert_plan(profile))
+    execute_plan(source, output, plan, build_backend("cpu"))
+    state = load_file(output / "model.safetensors")
+    expected = torch.tensor([[.5, 2.], [1., .25]]).repeat_interleave(32, dim=1)
+    value = state[name + ".weight"].float()
+    if quantize:
+        value *= state[name + ".weight_scale"]
+        assert validate_artifact(output)["valid"]
+    else:
+        assert set(state) == {name + ".weight"}
+    torch.testing.assert_close(value, expected, atol=.02, rtol=.02)
+
+
+@pytest.mark.parametrize("other", [".weight_packed", ".weight_scale_inv"])
+def test_ambiguous_source_scales_are_rejected(tmp_path, other):
+    source = tmp_path / "source"
+    source.mkdir()
+    name = "model.layers.0.self_attn.q_proj"
+    save_file({
+        name + ".weight": torch.ones(2, 32, dtype=torch.float8_e4m3fn),
+        name + ".weight_scale": torch.full((2, 1), 127, dtype=torch.uint8),
+        name + other: torch.ones(2, 16, dtype=torch.uint8),
+    }, source / "model.safetensors")
+    with pytest.raises(ValueError, match="Ambiguous"):
+        scan_hf_safetensors(source)
+
+
+@pytest.mark.parametrize("quantize", [False, True])
+@pytest.mark.parametrize("top_level", [False, True])
+def test_source_rotations_rejected_before_export(tmp_path, quantize, top_level):
+    source, output = tmp_path / "source", tmp_path / "output"
+    make_source(source)
+    profile = scan_hf_safetensors(source)
+    plan = (build_quantize_plan(profile, QuantizationPolicy(
+        selections=("linear",), num_bits=8, activation_num_bits=8,
+        strategy="channel", n_candidates=8,
+    )) if quantize else build_convert_plan(profile))
+    config_path = source / "config.json"
+    config = json.loads(config_path.read_text())
+    target = config if top_level else config["quantization_config"]
+    target["transform_config"] = {"config_groups": {"rotation": {
+        "type": "hadamard", "targets": ["Linear"],
+    }}}
+    config_path.write_text(json.dumps(config))
+    with pytest.raises(ValueError, match="online input rotations"):
+        scan_hf_safetensors(source)
+    # Also reject cached plans built before the source config changed.
+    with pytest.raises(ValueError, match="online input rotations"):
+        execute_plan(source, output, plan, build_backend("cpu"))
+    assert not output.exists()

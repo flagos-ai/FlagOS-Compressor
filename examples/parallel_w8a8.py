@@ -23,7 +23,8 @@ import flagos_compressor.quantizers.register  # noqa: F401
 from flagos_compressor.backends.registry import build_backend
 from flagos_compressor.cli.helpers import ensure_no_unmatched
 from flagos_compressor.core.executor import (
-    _patch_compressed_tensors_config, _write_quantization_manifest, execute_plan,
+    _QUANTIZED_FORMAT_BITS, _patch_compressed_tensors_config,
+    _write_quantization_manifest, execute_plan,
 )
 from flagos_compressor.core.plan import ExecutionPlan
 from flagos_compressor.core.planner import build_quantize_plan
@@ -60,8 +61,8 @@ def process_shard(shard, source, output, work):
                             output_format=action.output_format, rule_name=action.rule_name)
     plan.kept_tensors = [t for t in PLAN.kept_tensors if t.shard == shard]
     backend = build_backend("cuda", f"cuda:{DEVICE}", fallback_policy="error")
-    # Some checkpoints have shards containing only unquantized parameters.
-    if not plan.actions:
+    # Excluded source weights can still have BF16 conversion actions.
+    if not any(a.output_format.name in _QUANTIZED_FORMAT_BITS for a in plan.actions):
         plan.metadata["artifact_kind"] = "bf16"
     report = execute_plan(view, part, plan, backend)
     index = json.loads((part / "model.safetensors.index.json").read_text())

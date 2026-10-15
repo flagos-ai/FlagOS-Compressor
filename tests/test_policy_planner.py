@@ -67,13 +67,25 @@ def test_builtin_exclude_removes_shared_experts():
     assert plan.output_format_counts["compressed_tensors_int4_groupwise"] == 1
 
 
-def test_preserve_policy_has_an_explicit_runtime_contract_boundary():
+def test_preserve_policy_keeps_unselected_weights_without_conversion():
     policy = QuantizationPolicy(
         selections=("moe",),
         unselected=UnselectedWeightsPolicy(strategy="preserve", format=None),
     )
-    with pytest.raises(ValueError, match="runtime config exporter"):
-        build_quantize_plan(_profile(), policy)
+    plan = build_quantize_plan(_profile(), policy)
+    assert len(plan.actions) == 2
+    assert len(plan.kept_tensors) == 1
+    assert "bf16" not in plan.output_format_counts
+
+
+@pytest.mark.parametrize("method", ["gptq", "awq", "autoround"])
+def test_calibrated_methods_cannot_silently_convert_preserved_weights(method):
+    with pytest.raises(ValueError, match="preserve requires the MSE"):
+        QuantizationPolicy(
+            selections=("linear",),
+            method=method,
+            unselected=UnselectedWeightsPolicy("preserve", None),
+        )
 
 
 def test_selected_shape_must_align_to_group_size():

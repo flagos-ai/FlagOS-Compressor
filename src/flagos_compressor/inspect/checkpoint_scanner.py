@@ -4,9 +4,10 @@ import json
 from dataclasses import replace
 from pathlib import Path
 
-from flagos_compressor.core.dtypes import tensor_dtype_name
 from flagos_compressor.core.profile import ModelProfile, TensorInfo
+from flagos_compressor.inspect.source_layouts import fp8_source_params
 from flagos_compressor.inspect.scale_pairing import build_scale_map
+from flagos_compressor.inspect.source_transforms import reject_source_transforms
 from flagos_compressor.inspect.tensor_classifier import (
     classify_weight,
     infer_logical_shape,
@@ -17,6 +18,16 @@ from flagos_compressor.io.hf_checkpoint import HfSafetensorsCheckpoint
 
 _CURRENT_MANIFEST = "quantization_manifest.json"
 _LEGACY_MANIFEST = "quant_manifest.json"
+
+_HEADER_DTYPES = {
+    "BOOL": ("bool", 1), "U8": ("uint8", 1), "I8": ("int8", 1),
+    "I16": ("int16", 2), "U16": ("uint16", 2), "I32": ("int32", 4),
+    "U32": ("uint32", 4), "I64": ("int64", 8), "U64": ("uint64", 8),
+    "F16": ("float16", 2), "BF16": ("bfloat16", 2),
+    "F32": ("float32", 4), "F64": ("float64", 8),
+    "F8_E4M3": ("float8_e4m3fn", 1), "F8_E5M2": ("float8_e5m2", 1),
+    "F8_E8M0": ("float8_e8m0fnu", 1),
+}
 
 
 def _load_manifest(model_dir: Path) -> tuple[dict, str | None, str | None]:
@@ -42,10 +53,16 @@ def _load_manifest(model_dir: Path) -> tuple[dict, str | None, str | None]:
 
 def scan_hf_safetensors(model_path: str | Path) -> ModelProfile:
     model_dir = Path(model_path)
+    config_path = model_dir / "config.json"
+    config = json.loads(config_path.read_text()) if config_path.exists() else {}
+    reject_source_transforms(config)
     checkpoint = HfSafetensorsCheckpoint(model_dir)
     scale_map = build_scale_map(set(checkpoint.weight_map.keys()))
     manifest, manifest_abi, manifest_filename = _load_manifest(model_dir)
-    manifest_specs: dict[str, dict] = dict(manifest.get("tensors") or {})
+    manifest_specs: dict[str, dict] = {
+        **(manifest.get("preserved_tensors") or {}),
+        **(manifest.get("tensors") or {}),
+    }
     if manifest_specs:
         for weight_name, spec in manifest_specs.items():
             scale_name = spec.get("scale")
@@ -66,22 +83,18 @@ def scan_hf_safetensors(model_path: str | Path) -> ModelProfile:
             "num_shards": len(checkpoint.shard_files()),
             "quantization_manifest_schema": manifest_abi,
             "quantization_manifest_file": manifest_filename,
+            "source_quantization_config": config.get("quantization_config"),
         },
     )
 
     shapes: dict[str, tuple[int, ...]] = {}
     raw: dict[str, dict] = {}
-    for shard_name, _ in checkpoint.iter_shards():
-        state = checkpoint.load_shard(shard_name)
-        for tensor_name, tensor in state.items():
-            shape = tuple(int(x) for x in tensor.shape)
-            shapes[tensor_name] = shape
-            raw[tensor_name] = {
-                "shape": shape,
-                "dtype": tensor_dtype_name(tensor),
-                "shard": shard_name,
-                "element_size": tensor.element_size(),
-            }
+    for tensor_name, shard_name, header in checkpoint.iter_tensor_metadata():
+        shape = tuple(header["shape"])
+        dtype, element_size = _HEADER_DTYPES[header["dtype"]]
+        shapes[tensor_name] = shape
+        raw[tensor_name] = {"shape": shape, "dtype": dtype, "shard": shard_name,
+                            "element_size": element_size}
 
     for tensor_name, info in raw.items():
         scale_name = scale_map.get(tensor_name)
@@ -97,10 +110,12 @@ def scan_hf_safetensors(model_path: str | Path) -> ModelProfile:
             else "weight"
         )
         storage_format = None
+        storage_params = {}
         manifest_spec = manifest_specs.get(tensor_name)
         if role == "weight" and scale_name:
             if manifest_spec and manifest_spec.get("format"):
                 storage_format = manifest_spec["format"]
+                storage_params = dict(manifest_spec.get("storage_params") or {})
             else:
                 storage_format = infer_storage_format(
                     info["shape"],
@@ -110,6 +125,27 @@ def scan_hf_safetensors(model_path: str | Path) -> ModelProfile:
                     scale_dtype=raw[scale_name]["dtype"],
                     global_scale_shape=shapes.get(global_scale_name),
                 )
+                if info["dtype"] in {"float8_e4m3fn", "float8_e5m2"}:
+                    params = fp8_source_params(
+                        tensor_name, info["shape"], shapes.get(scale_name), config
+                    )
+                    # Explicit rectangular/model-specific FP8 layouts retain
+                    # their parameters; otherwise use strict MXFP8 detection.
+                    explicit_fp8 = (
+                        (config.get("quantization_config") or {}).get("weight_block_size")
+                        or config.get("model_type") in {"deepseek_v41", "mimo_v2"}
+                    )
+                    if params is not None and (
+                        storage_format != "mxfp8_e4m3_e8m0" or explicit_fp8
+                    ):
+                        storage_format = "fp8_block_e8m0"
+                        storage_params = params
+                    elif storage_format != "mxfp8_e4m3_e8m0":
+                        storage_format = None
+            if storage_format == "fp8_block_e8m0":
+                # Preserve the on-disk encoding: UINT8 holds raw E8M0 bits,
+                # whereas floating dtypes hold numeric scale values.
+                storage_params["scale_dtype"] = raw[scale_name]["dtype"]
         logical_name = (
             manifest_spec.get("logical_name", tensor_name)
             if manifest_spec
@@ -152,6 +188,7 @@ def scan_hf_safetensors(model_path: str | Path) -> ModelProfile:
             logical_name=logical_name,
             global_scale_name=global_scale_name,
             auxiliary_names=auxiliary_names,
+            storage_params=storage_params,
         )
 
     # Auxiliary source scales are metadata, never independent model weights.
