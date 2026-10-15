@@ -120,6 +120,10 @@ def scan_hf_safetensors(model_path: str | Path) -> ModelProfile:
                     info["element_size"],
                     shapes.get(scale_name),
                 )
+            if storage_format == "fp8_block_e8m0":
+                # Preserve the on-disk encoding: UINT8 holds raw E8M0 bits,
+                # whereas floating dtypes hold numeric scale values.
+                storage_params["scale_dtype"] = raw[scale_name]["dtype"]
         logical_name = (
             manifest_spec.get("logical_name", tensor_name)
             if manifest_spec

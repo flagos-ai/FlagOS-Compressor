@@ -88,7 +88,30 @@ _STRIP_CONFIG_KEYS = (
 _BF16_FORMATS = {"bf16"}
 
 
-def _patch_bf16_config(output_path: Path) -> None:
+def _patch_engram_config(config: dict, plan: ExecutionPlan) -> None:
+    """Select the Engram loader from final weights, including copied tensors."""
+    final_dtypes = {
+        t.name: t.dtype for t in plan.kept_tensors if t.role == "weight"
+    }
+    final_dtypes.update({
+        a.tensor.name: (
+            "bfloat16" if a.output_format.name == "bf16" else a.output_format.name
+        )
+        for a in plan.actions
+    })
+    engram_dtypes = {
+        dtype for name, dtype in final_dtypes.items()
+        if name.endswith(".engram.embed.weight")
+    }
+    if "bfloat16" in engram_dtypes and len(engram_dtypes) > 1:
+        raise ValueError("Mixed BF16 and non-BF16 Engram tables are unsupported")
+    if engram_dtypes == {"bfloat16"}:
+        config["flagos_bf16_engram"] = True
+    else:
+        config.pop("flagos_bf16_engram", None)
+
+
+def _patch_bf16_config(output_path: Path, plan: ExecutionPlan) -> None:
     """Rewrite the output ``config.json`` so it describes a plain BF16 model.
 
     After dequantization the artifact no longer carries FP8/FP4 weights, so
@@ -104,6 +127,7 @@ def _patch_bf16_config(output_path: Path) -> None:
         config = json.load(f)
 
     config.pop("flagos_source_quantization", None)
+    _patch_engram_config(config, plan)
     config["torch_dtype"] = "bfloat16"
     for key in _STRIP_CONFIG_KEYS:
         config.pop(key, None)
@@ -350,12 +374,7 @@ def _patch_compressed_tensors_config(
 
     else:
         config.pop("flagos_source_quantization", None)
-    if any(
-        a.output_format.name == "bf16"
-        and a.tensor.name.endswith(".engram.embed.weight")
-        for a in plan.actions
-    ):
-        config["flagos_bf16_engram"] = True
+    _patch_engram_config(config, plan)
     config["torch_dtype"] = "bfloat16"
     for key in (*_STRIP_CONFIG_KEYS, "expert_dtype"):
         config.pop(key, None)
@@ -786,7 +805,7 @@ def execute_plan(
         quantization_config = _patch_compressed_tensors_config(output, plan)
         _write_quantization_manifest(output, plan, quantization_config)
     else:
-        _patch_bf16_config(output)
+        _patch_bf16_config(output, plan)
     report.output_tensors = len(new_weight_map)
     report.extras.update(
         {

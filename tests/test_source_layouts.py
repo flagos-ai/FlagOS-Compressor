@@ -256,8 +256,12 @@ def test_indexer_and_engram_export_policy(tmp_path, monkeypatch, preserve):
     assert manifest["runtime_config"]["requires_source_format_modules"] is True
     assert validate_artifact(output)["valid"]
     rescanned = scan_hf_safetensors(output)
-    assert rescanned.tensors[embedding].storage_params == {"block_size": [1, 32]}
-    assert rescanned.tensors[indexer].storage_params == {"block_size": [32, 32]}
+    assert rescanned.tensors[embedding].storage_params == {
+        "block_size": [1, 32], "scale_dtype": "float32"
+    }
+    assert rescanned.tensors[indexer].storage_params == {
+        "block_size": [32, 32], "scale_dtype": "float32"
+    }
     manifest["preserved_tensors"][indexer]["scale"] = "missing.scale"
     (output / "quantization_manifest.json").write_text(json.dumps(manifest))
     validation = validate_artifact(output)

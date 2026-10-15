@@ -7,15 +7,14 @@ introducing another activation quantizer. INT8 grouped output projections use
 the existing compressed-tensors linear kernel.
 """
 
-import functools
-import json
 import os
-from pathlib import Path
+
+from flagos_compressor.formats.fp8_e8m0 import decode_e8m0_scale
 
 
 def _dequantize_preserved_fp8(weight, scale, block_size, dtype):
     expanded = (
-        scale.float()
+        decode_e8m0_scale(scale)
         .repeat_interleave(block_size[0], 0)
         .repeat_interleave(block_size[1], 1)
     )
@@ -37,15 +36,11 @@ def _grouped_linear_projection(inputs, linear, groups, rank):
     return projected[:, group_ids, group_ids, :].reshape(tokens, groups * rank)
 
 
-@functools.lru_cache(maxsize=8)
-def _source_contract(model):
-    path = Path(model) / "config.json"
-    if not path.is_file():
+def _source_contract(hf_config):
+    # vLLM already resolved the repo ID, revision and cache location here.
+    if getattr(hf_config, "model_type", None) != "deepseek_v41":
         return {}
-    config = json.loads(path.read_text())
-    if config.get("model_type") != "deepseek_v41":
-        return {}
-    return config.get("flagos_source_quantization", {})
+    return getattr(hf_config, "flagos_source_quantization", None) or {}
 
 
 def register():
@@ -78,6 +73,15 @@ def register():
     class PreservedFp8LinearMethod(LinearMethodBase):
         def __init__(self, spec):
             self.block_size = spec["storage_params"]["block_size"]
+            scale_dtype = spec["storage_params"].get("scale_dtype")
+            if scale_dtype not in {
+                "float32", "float16", "bfloat16", "uint8", "float8_e8m0fnu"
+            } or not hasattr(torch, scale_dtype):
+                raise ValueError(
+                    f"Unsupported or missing preserved FP8 scale dtype: {scale_dtype!r}; "
+                    "re-export the checkpoint with source scale metadata"
+                )
+            self.scale_dtype = getattr(torch, scale_dtype)
 
         def create_weights(
             self,
@@ -105,7 +109,7 @@ def register():
                     input_size_per_partition,
                     self.block_size,
                     loader,
-                    scale_dtype=torch.float8_e8m0fnu,
+                    scale_dtype=self.scale_dtype,
                 ),
             )
 
@@ -123,7 +127,7 @@ def register():
     def get_quant_method(self, layer, prefix):
         current = get_current_vllm_config_or_none()
         if current is not None and isinstance(layer, LinearBase):
-            contract = _source_contract(current.model_config.model)
+            contract = _source_contract(current.model_config.hf_config)
             name = (
                 prefix.removeprefix("language_model.").removeprefix("model.")
                 + ".weight"
