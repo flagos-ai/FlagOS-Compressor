@@ -134,16 +134,6 @@ flagos-compressor quantize \
 
 CLI values that are explicitly passed override recipe values. Selectors from the CLI and recipe are merged.
 
-## Quantize Linear weights to W8A16
-
-For a fresh Linear-only W8A16 export from source weights, use
-`examples/recipes/linear-int8-a16-bf16-indexer.yaml` with `quantize`. That
-recipe keeps indexers out of integer quantization, decodes remaining source
-FP8/FP4 weights to BF16, and preserves native FP32 parameters.
-It uses the existing W8A16 quantization path with groups of 128 for
-compatibility with grouped W8A16 MoE runtimes. The export computes weight
-codes and scales from the source weights.
-
 ## Validate the output
 
 Validate every generated artifact:
