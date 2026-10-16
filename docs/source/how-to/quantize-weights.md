@@ -160,11 +160,15 @@ W8A16 uses BF16/FP16 activations according to the inference model dtype. The
 runtime must support the packed INT8 ABI. Changing activation precision also
 changes the runtime kernel path; numerical and end-to-end inference checks
 are needed when interpreting an accuracy comparison.
+Routed experts additionally need channelwise W8A16 support, such as a
+compatible CUDA Marlin MoE backend.
 
 For a fresh Linear-only W8A16 export from source weights, use
 `examples/recipes/linear-int8-a16-bf16-indexer.yaml` with `quantize`. That
 recipe keeps indexers out of integer quantization, decodes remaining source
 FP8/FP4 weights to BF16, and preserves native FP32 parameters.
+It uses groups of 128 for compatibility with grouped W8A16 MoE runtimes;
+unlike `repack`, a fresh export computes new weight codes and scales.
 
 ## Validate the output
 
