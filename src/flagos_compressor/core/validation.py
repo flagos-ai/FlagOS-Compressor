@@ -71,7 +71,8 @@ def validate_artifact(model_path: str | Path) -> dict:
         "compressed-tensors-pack-quantized-int8": (
             8,
             torch.int32,
-            torch.bfloat16,
+            # W8A8 repacking preserves its declared FP32 scale payload.
+            None,
             True,
         ),
         "compressed-tensors-int-quantized-int8": (8, torch.int8, None, False),
@@ -115,7 +116,7 @@ def validate_artifact(model_path: str | Path) -> dict:
             if expected_scale_dtype is None:
                 try:
                     expected_scale_dtype = parse_w8a8_scale_dtype(
-                        spec.get("scale_dtype", "float32")
+                        spec.get("scale_dtype", "bfloat16" if requires_shape else "float32")
                     )
                 except (TypeError, ValueError) as exc:
                     errors.append(f"Invalid scale dtype for {name}: {exc}")

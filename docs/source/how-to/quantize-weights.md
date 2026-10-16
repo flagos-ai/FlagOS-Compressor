@@ -134,6 +134,38 @@ flagos-compressor quantize \
 
 CLI values that are explicitly passed override recipe values. Selectors from the CLI and recipe are merged.
 
+## Repack W8A8 weights for a W8A16 comparison
+
+Use `repack` to compare activation precision while keeping the existing INT8
+codes and FP32 scales unchanged:
+
+```bash
+flagos-compressor repack \
+  --input "$MODEL_OUTPUT_ROOT/mimo-w8a8" \
+  --output "$MODEL_OUTPUT_ROOT/mimo-w8a16" \
+  --to w8a16
+```
+
+The input must be a channelwise, symmetric W8A8 `int-quantized` checkpoint
+with a FlagOS-Compressor manifest and safetensors index. The output directory
+must not already exist. Add `--dry-run` to inspect the operation first.
+
+Repacking writes the `pack-quantized` ABI without rerunning the quantizer. It
+verifies every packed INT8 code by roundtrip and checks every unchanged root
+tensor, including native FP32 parameters and FP32 scales, byte for byte.
+`repack_report.json` records these checks. Groupwise or fused 3D integer banks
+are currently unsupported.
+
+W8A16 uses BF16/FP16 activations according to the inference model dtype. The
+runtime must support the packed INT8 ABI. Changing activation precision also
+changes the runtime kernel path; numerical and end-to-end inference checks
+are needed when interpreting an accuracy comparison.
+
+For a fresh Linear-only W8A16 export from source weights, use
+`examples/recipes/linear-int8-a16-bf16-indexer.yaml` with `quantize`. That
+recipe keeps indexers out of integer quantization, decodes remaining source
+FP8/FP4 weights to BF16, and preserves native FP32 parameters.
+
 ## Validate the output
 
 Validate every generated artifact:
