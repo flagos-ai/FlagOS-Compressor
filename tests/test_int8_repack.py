@@ -83,3 +83,15 @@ def test_repack_rejects_nonfinite_channel_scales(tmp_path):
     with pytest.raises(ValueError, match='finite positive FP32'):
         repack_w8a16(source, output)
     assert json.loads((output / 'repack_report.json').read_text())['status'] == 'failed'
+
+
+def test_repack_rejects_missing_unquantized_index_tensor_before_writing(tmp_path):
+    source, output = tmp_path / 'source', tmp_path / 'output'
+    source_checkpoint(source)
+    index_path = source / 'model.safetensors.index.json'
+    index = json.loads(index_path.read_text())
+    index['weight_map']['model.missing_norm.weight'] = 'model-00001-of-00001.safetensors'
+    index_path.write_text(json.dumps(index))
+    with pytest.raises(ValueError, match='Shard/index tensor mismatch'):
+        repack_w8a16(source, output)
+    assert not output.exists()

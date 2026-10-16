@@ -91,6 +91,10 @@ def repack_w8a16(source: Path, output: Path, *, dry_run: bool = False) -> dict:
     for shard in shards:
         if Path(shard).name != shard or not (source / shard).is_file():
             raise ValueError(f"Invalid shard path: {shard}")
+        with safe_open(source / shard, framework="pt", device="cpu") as handle:
+            mapped = {name for name, filename in weight_map.items() if filename == shard}
+            if set(handle.keys()) != mapped:
+                raise ValueError(f"Shard/index tensor mismatch: {shard}")
     report = {"operation": "repack_w8a8_to_w8a16", "producer": "flagos-compressor",
               "input": str(source), "output": str(output), "status": "planned",
               "weights": len(selected), "shards": len(shards),
