@@ -7,7 +7,7 @@ import sys
 from flagos_compressor.core.policy import BUILTIN_SELECTIONS
 
 
-COMMANDS = {"convert", "quantize", "repack", "inspect", "validate"}
+COMMANDS = {"convert", "quantize", "inspect", "validate"}
 
 
 def _add_backend_args(parser: argparse.ArgumentParser) -> None:
@@ -29,14 +29,6 @@ def build_parser() -> argparse.ArgumentParser:
     convert.add_argument("--to", default="bf16", choices=["bf16"])
     convert.add_argument("--dry-run", action="store_true")
     _add_backend_args(convert)
-
-    repack = subparsers.add_parser(
-        "repack", help="Repack channelwise W8A8 INT8 weights for W8A16 without requantizing."
-    )
-    repack.add_argument("--input", required=True)
-    repack.add_argument("--output", required=True)
-    repack.add_argument("--to", choices=["w8a16"], default="w8a16")
-    repack.add_argument("--dry-run", action="store_true")
 
     quantize = subparsers.add_parser(
         "quantize",
@@ -211,9 +203,6 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "inspect":
         from flagos_compressor.cli import inspect_model
         inspect_model.run(args)
-    elif args.command == "repack":
-        from flagos_compressor.cli import repack
-        repack.run(args)
     else:
         from flagos_compressor.cli import validate
         validate.run(args)
