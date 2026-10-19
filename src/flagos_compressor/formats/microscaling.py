@@ -49,9 +49,8 @@ def nvfp4_dequant(
     )
 
 
-for _backend in ("cpu", "torch"):
-    register_op("mxfp8_dequant", _backend)(mxfp8_dequant)
-    register_op("nvfp4_dequant", _backend)(nvfp4_dequant)
+register_op("mxfp8_dequant")(mxfp8_dequant)
+register_op("nvfp4_dequant")(nvfp4_dequant)
 
 
 class Mxfp8Format(WeightFormat):

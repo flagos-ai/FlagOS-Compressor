@@ -39,7 +39,5 @@ def unpack_uint8b128_int32(
     return (codes.to(torch.int16) - 128).to(torch.int8)
 
 
-register_op("int8_pack_uint8b128_int32", "cpu")(pack_uint8b128_int32)
-register_op("int8_pack_uint8b128_int32", "torch")(pack_uint8b128_int32)
-register_op("int8_unpack_uint8b128_int32", "cpu")(unpack_uint8b128_int32)
-register_op("int8_unpack_uint8b128_int32", "torch")(unpack_uint8b128_int32)
+register_op("int8_pack_uint8b128_int32")(pack_uint8b128_int32)
+register_op("int8_unpack_uint8b128_int32")(unpack_uint8b128_int32)

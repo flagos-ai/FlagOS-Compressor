@@ -42,7 +42,5 @@ def unpack_uint4b8_int32(packed: torch.Tensor) -> torch.Tensor:
     return (codes.to(torch.int16) - 8).to(torch.int8)
 
 
-register_op("int4_pack_uint4b8_int32", "cpu")(pack_uint4b8_int32)
-register_op("int4_pack_uint4b8_int32", "torch")(pack_uint4b8_int32)
-register_op("int4_unpack_uint4b8_int32", "cpu")(unpack_uint4b8_int32)
-register_op("int4_unpack_uint4b8_int32", "torch")(unpack_uint4b8_int32)
+register_op("int4_pack_uint4b8_int32")(pack_uint4b8_int32)
+register_op("int4_unpack_uint4b8_int32")(unpack_uint4b8_int32)
