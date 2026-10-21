@@ -86,9 +86,6 @@ class QuantBackend:
         if callable(empty_cache):
             empty_cache()
 
-    def supports_op(self, op_name: str) -> bool:
-        return GLOBAL_OP_REGISTRY.has(op_name, self.name) or GLOBAL_OP_REGISTRY.has(op_name, "torch")
-
     def run(
         self,
         op_name: str,
@@ -96,59 +93,44 @@ class QuantBackend:
         context: BackendRunContext | None = None,
         **kwargs: Any,
     ) -> Any:
+        op = GLOBAL_OP_REGISTRY.resolve(op_name)
+        if op is None:
+            raise NotImplementedError(f"No implementation registered for op '{op_name}'")
+
         placement = self.op_placement.get(op_name, "device")
         requested_backend = self.name if placement != "cpu" else "cpu"
-        backend_available = self.is_available() if requested_backend != "cpu" else True
-
-        impl = None
         actual_backend = requested_backend
         fallback = False
         reason = None
 
-        if requested_backend != "cpu" and backend_available:
-            impl = GLOBAL_OP_REGISTRY.resolve(op_name, self.name)
-            if impl is None:
-                impl = GLOBAL_OP_REGISTRY.resolve(op_name, "torch")
-                actual_backend = self.name if impl is not None else self.name
-        elif requested_backend != "cpu" and not backend_available:
-            fallback = True
+        if requested_backend != "cpu" and not self.is_available():
             reason = f"backend '{self.name}' is not available"
-
-        if impl is None and requested_backend == "cpu":
-            impl = GLOBAL_OP_REGISTRY.resolve(op_name, "cpu")
-            actual_backend = "cpu"
-
-        if impl is None:
-            cpu_impl = GLOBAL_OP_REGISTRY.resolve(op_name, "cpu")
-            if cpu_impl is None:
-                raise NotImplementedError(f"No implementation registered for op '{op_name}'")
             if self.fallback_policy == "error":
-                raise RuntimeError(f"Op '{op_name}' is not available on backend '{self.name}'")
-            impl = cpu_impl
+                raise RuntimeError(f"Cannot run op '{op_name}': {reason}")
             actual_backend = "cpu"
             fallback = True
-            reason = f"op '{op_name}' unavailable on backend '{self.name}'"
 
-        run_args = args
-        if actual_backend == "cpu":
-            run_args = tuple(arg.cpu() if isinstance(arg, torch.Tensor) else arg for arg in args)
-        elif placement != "cpu":
-            run_args = tuple(self.move(arg) if isinstance(arg, torch.Tensor) else arg for arg in args)
+        def execute(on_cpu: bool) -> Any:
+            move = torch.Tensor.cpu if on_cpu else self.move
+            run_args = tuple(move(arg) if isinstance(arg, torch.Tensor) else arg for arg in args)
+            run_kwargs = {
+                key: move(value) if isinstance(value, torch.Tensor) else value
+                for key, value in kwargs.items()
+            }
+            return op(*run_args, **run_kwargs)
 
         started = time.perf_counter()
         try:
-            result = impl.func(*run_args, **kwargs)
-        except Exception as exc:
+            result = execute(actual_backend == "cpu")
+        except RuntimeError as exc:
+            # Retry runtime/transfer failures only. Input validation errors
+            # (ValueError/TypeError) must propagate without a CPU retry.
             if actual_backend == "cpu" or self.fallback_policy == "error":
-                raise
-            cpu_impl = GLOBAL_OP_REGISTRY.resolve(op_name, "cpu")
-            if cpu_impl is None:
                 raise
             fallback = True
             reason = f"{type(exc).__name__}: {exc}"
             actual_backend = "cpu"
-            run_args = tuple(arg.cpu() if isinstance(arg, torch.Tensor) else arg for arg in args)
-            result = cpu_impl.func(*run_args, **kwargs)
+            result = execute(on_cpu=True)
         elapsed_ms = (time.perf_counter() - started) * 1000.0
 
         if context and context.report:

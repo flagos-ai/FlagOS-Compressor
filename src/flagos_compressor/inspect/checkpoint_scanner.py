@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 from flagos_compressor.core.profile import ModelProfile, TensorInfo
 from flagos_compressor.inspect.source_layouts import fp8_source_params
 from flagos_compressor.inspect.scale_pairing import build_scale_map
+from flagos_compressor.inspect.source_transforms import reject_source_transforms
 from flagos_compressor.inspect.tensor_classifier import (
     classify_weight,
     infer_logical_shape,
@@ -51,9 +53,10 @@ def _load_manifest(model_dir: Path) -> tuple[dict, str | None, str | None]:
 
 def scan_hf_safetensors(model_path: str | Path) -> ModelProfile:
     model_dir = Path(model_path)
-    checkpoint = HfSafetensorsCheckpoint(model_dir)
     config_path = model_dir / "config.json"
     config = json.loads(config_path.read_text()) if config_path.exists() else {}
+    reject_source_transforms(config)
+    checkpoint = HfSafetensorsCheckpoint(model_dir)
     scale_map = build_scale_map(set(checkpoint.weight_map.keys()))
     manifest, manifest_abi, manifest_filename = _load_manifest(model_dir)
     manifest_specs: dict[str, dict] = {
@@ -95,6 +98,10 @@ def scan_hf_safetensors(model_path: str | Path) -> ModelProfile:
 
     for tensor_name, info in raw.items():
         scale_name = scale_map.get(tensor_name)
+        prefix = tensor_name.rsplit(".", 1)[0]
+        global_scale_name = prefix + ".weight_global_scale"
+        if global_scale_name not in raw:
+            global_scale_name = None
         role = (
             "scale"
             if tensor_name in scale_targets
@@ -109,17 +116,32 @@ def scan_hf_safetensors(model_path: str | Path) -> ModelProfile:
             if manifest_spec and manifest_spec.get("format"):
                 storage_format = manifest_spec["format"]
                 storage_params = dict(manifest_spec.get("storage_params") or {})
-            elif info["dtype"] in {"float8_e4m3fn", "float8_e5m2"}:
-                params = fp8_source_params(tensor_name, info["shape"], shapes.get(scale_name), config)
-                if params is not None:
-                    storage_format = "fp8_block_e8m0"
-                    storage_params = params
             else:
                 storage_format = infer_storage_format(
                     info["shape"],
                     info["element_size"],
                     shapes.get(scale_name),
+                    weight_dtype=info["dtype"],
+                    scale_dtype=raw[scale_name]["dtype"],
+                    global_scale_shape=shapes.get(global_scale_name),
                 )
+                if info["dtype"] in {"float8_e4m3fn", "float8_e5m2"}:
+                    params = fp8_source_params(
+                        tensor_name, info["shape"], shapes.get(scale_name), config
+                    )
+                    # Explicit rectangular/model-specific FP8 layouts retain
+                    # their parameters; otherwise use strict MXFP8 detection.
+                    explicit_fp8 = (
+                        (config.get("quantization_config") or {}).get("weight_block_size")
+                        or config.get("model_type") in {"deepseek_v41", "mimo_v2"}
+                    )
+                    if params is not None and (
+                        storage_format != "mxfp8_e4m3_e8m0" or explicit_fp8
+                    ):
+                        storage_format = "fp8_block_e8m0"
+                        storage_params = params
+                    elif storage_format != "mxfp8_e4m3_e8m0":
+                        storage_format = None
             if storage_format == "fp8_block_e8m0":
                 # Preserve the on-disk encoding: UINT8 holds raw E8M0 bits,
                 # whereas floating dtypes hold numeric scale values.
@@ -129,6 +151,20 @@ def scan_hf_safetensors(model_path: str | Path) -> ModelProfile:
             if manifest_spec
             else tensor_name
         )
+        auxiliary_names = ()
+        if storage_format == "nvfp4":
+            if not tensor_name.endswith(".weight_packed"):
+                raise ValueError(f"NVFP4 weight must end in .weight_packed: {tensor_name}")
+            logical_name = prefix + ".weight"
+            if logical_name in raw:
+                raise ValueError(f"NVFP4 logical weight already exists: {logical_name}")
+            auxiliary_names = tuple(
+                name for name in (
+                    global_scale_name, prefix + ".input_global_scale",
+                ) if name in raw
+            )
+        else:
+            global_scale_name = None
         module_kind, tags = (
             classify_weight(logical_name) if role == "weight" else (None, ())
         )
@@ -149,7 +185,14 @@ def scan_hf_safetensors(model_path: str | Path) -> ModelProfile:
             logical_shape=logical_shape,
             module_kind=module_kind,
             tags=tags,
+            logical_name=logical_name,
+            global_scale_name=global_scale_name,
+            auxiliary_names=auxiliary_names,
             storage_params=storage_params,
         )
 
+    # Auxiliary source scales are metadata, never independent model weights.
+    for tensor in list(profile.tensors.values()):
+        for name in tensor.auxiliary_names:
+            profile.tensors[name] = replace(profile.tensors[name], role="scale")
     return profile

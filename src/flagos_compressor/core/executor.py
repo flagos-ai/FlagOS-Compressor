@@ -51,9 +51,9 @@ def _fused_expert_projections(action) -> list[tuple[str, ExpertProjection]]:
     quantization so the names/shapes match the tensors written to disk.
     """
     tensor = action.tensor
-    prefix = fused_expert_bank_prefix(tensor.name)
+    prefix = fused_expert_bank_prefix(tensor.effective_name)
     params = action.output_format.params
-    proj_kind = params.get("proj_kind") or tensor.name.split(".")[-1]
+    proj_kind = params.get("proj_kind") or tensor.effective_name.split(".")[-1]
     layout = layout_by_name(params["layout"])
     projections = layout.expand_bank(
         proj_kind,
@@ -76,7 +76,12 @@ def _build_action_map(plan: ExecutionPlan) -> dict[str, TensorAction]:
 
 
 def _build_scale_names(plan: ExecutionPlan) -> set[str]:
-    return {action.tensor.scale_name for action in plan.actions if action.tensor.scale_name}
+    return {
+        name
+        for action in plan.actions
+        for name in (action.tensor.scale_name, *action.tensor.auxiliary_names)
+        if name
+    }
 
 
 _STRIP_CONFIG_KEYS = (
@@ -140,11 +145,11 @@ def _patch_bf16_config(output_path: Path, plan: ExecutionPlan) -> None:
 
 def _logical_weight_names(plan: ExecutionPlan) -> set[str]:
     names = {
-        tensor.name
+        tensor.effective_name
         for tensor in (
             [action.tensor for action in plan.actions] + plan.kept_tensors
         )
-        if tensor.role == "weight" and tensor.name.endswith(".weight")
+        if tensor.role == "weight" and tensor.effective_name.endswith(".weight")
     }
     for action in plan.actions:
         if action.output_format.name in _FUSED_MOE_FORMAT_BITS:
@@ -165,20 +170,20 @@ def _ignore_modules(plan: ExecutionPlan) -> set[str]:
     treated as Linear by the loader and are left out.
     """
     quantized = {
-        action.tensor.name
+        action.tensor.effective_name
         for action in plan.actions
         if action.output_format.name in _QUANTIZED_OUTPUT_FORMATS
     }
     candidates = [action.tensor for action in plan.actions] + plan.kept_tensors
     ignore: set[str] = set()
     for tensor in candidates:
-        if tensor.role != "weight" or not tensor.name.endswith(".weight"):
+        if tensor.role != "weight" or not tensor.effective_name.endswith(".weight"):
             continue
-        if tensor.name in quantized:
+        if tensor.effective_name in quantized:
             continue
         if len(tensor.effective_logical_shape) != 2:
             continue
-        ignore.add(tensor.name[: -len(".weight")])
+        ignore.add(tensor.effective_name[: -len(".weight")])
     return ignore
 
 
@@ -314,7 +319,7 @@ def _patch_compressed_tensors_config(
         if output_name in _FUSED_MOE_FORMAT_BITS:
             selected.update(_fused_expert_logical_weights(action))
         else:
-            selected.add(action.tensor.name)
+            selected.add(action.tensor.effective_name)
     if not selected_by_scheme:
         raise ValueError("Cannot export compressed-tensors without quantized weights")
 
@@ -394,9 +399,9 @@ def _write_quantization_manifest(
         tensor = action.tensor
         if action.output_format.name == "compressed_tensors_w8a8_channelwise":
             logical_shape = tensor.effective_logical_shape
-            names = int_quantized_tensor_names(tensor.name)
+            names = int_quantized_tensor_names(tensor.effective_name)
             tensors[names.weight] = {
-                "logical_name": tensor.name,
+                "logical_name": tensor.effective_name,
                 "format": "compressed-tensors-int-quantized-int8",
                 "input_format": action.input_format.name,
                 "storage_dtype": "int8",
@@ -422,9 +427,9 @@ def _write_quantization_manifest(
                 if strategy == "channel"
                 else logical_shape[1] // int(group_size)
             )
-            names = compressed_tensor_names(tensor.name)
+            names = compressed_tensor_names(tensor.effective_name)
             tensors[names.weight] = {
-                "logical_name": tensor.name,
+                "logical_name": tensor.effective_name,
                 "format": f"compressed-tensors-pack-quantized-int{num_bits}",
                 "input_format": action.input_format.name,
                 "storage_dtype": "int32",
@@ -472,7 +477,7 @@ def _write_quantization_manifest(
                     "activation_num_bits": 8,
                     "strategy": "channel",
                     "rule": action.rule_name,
-                    "source_fused_bank": tensor.name,
+                    "source_fused_bank": tensor.effective_name,
                 }
         elif action.output_format.name in _FUSED_MOE_FORMAT_BITS:
             num_bits = _FUSED_MOE_FORMAT_BITS[action.output_format.name]
@@ -505,11 +510,11 @@ def _write_quantization_manifest(
                     "strategy": "group",
                     "group_size": group_size,
                     "rule": action.rule_name,
-                    "source_fused_bank": tensor.name,
+                    "source_fused_bank": tensor.effective_name,
                 }
         elif action.output_format.name in _BF16_FORMATS:
-            tensors[tensor.name] = {
-                "logical_name": tensor.name,
+            tensors[tensor.effective_name] = {
+                "logical_name": tensor.effective_name,
                 "format": "bf16",
                 "input_format": action.input_format.name,
                 "storage_dtype": "bfloat16",
@@ -519,8 +524,8 @@ def _write_quantization_manifest(
             }
     for tensor in plan.kept_tensors:
         if tensor.role == "weight":
-            tensors[tensor.name] = {
-                "logical_name": tensor.name,
+            tensors[tensor.effective_name] = {
+                "logical_name": tensor.effective_name,
                 "format": tensor.storage_format or tensor.dtype,
                 "storage_dtype": tensor.dtype,
                 "storage_shape": list(tensor.shape),
@@ -705,6 +710,11 @@ def execute_plan(
     plan: ExecutionPlan,
     backend: QuantBackend,
 ) -> ConversionReport:
+    from flagos_compressor.inspect.source_transforms import reject_source_transforms
+
+    config_path = Path(input_path) / "config.json"
+    if config_path.exists():
+        reject_source_transforms(json.loads(config_path.read_text()))
     checkpoint = HfSafetensorsCheckpoint(input_path)
     output = Path(output_path)
     if Path(input_path).resolve() == output.resolve():
@@ -753,23 +763,26 @@ def execute_plan(
 
             scale = get_tensor(action.tensor.scale_name) if action.tensor.scale_name else None
             input_format = get_weight_format(action.input_format.name)
+            input_params = dict(action.input_format.params)
+            if action.tensor.global_scale_name:
+                input_params["global_scale"] = get_tensor(action.tensor.global_scale_name)
             if (
                 action.output_format.name == "bf16"
                 and action.input_format.name in {"fp8_block_e8m0", "fp4_e2m1_e8m0"}
                 and tensor.numel() > 16 * 1024 * 1024
-                and not action.input_format.params.get("qkv_groups")
+                and not input_params.get("qkv_groups")
             ):
                 canonical_weight = dequantize_bf16_cpu(
                     tensor, scale, input_format, backend, context,
-                    action.input_format.params,
+                    input_params,
                 )
             else:
                 canonical_weight = input_format.to_canonical(
-                    tensor, scale, backend, context, action.input_format.params,
+                    tensor, scale, backend, context, input_params,
                 )
             output_format = get_weight_format(action.output_format.name)
             result = output_format.from_canonical(
-                tensor_name,
+                action.tensor.effective_name,
                 canonical_weight,
                 backend,
                 context,
@@ -780,7 +793,11 @@ def execute_plan(
                 output_tensor_locations[output_name] = shard_name
             report.converted += 1
             for generated_name in result.generated_tensor_names:
-                if generated_name in checkpoint.weight_map and generated_name not in old_scale_names:
+                if (
+                    generated_name in checkpoint.weight_map
+                    and generated_name not in old_scale_names
+                    and generated_name != tensor_name
+                ):
                     raise ValueError(
                         f"Generated tensor {generated_name!r} collides with an existing tensor"
                     )

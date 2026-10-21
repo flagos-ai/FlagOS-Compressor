@@ -24,7 +24,7 @@ def _calibration_source(model_path: str, backend):
     profile = scan_hf_safetensors(model_path)
     needs_conversion = any(
         tensor.role == "weight"
-        and tensor.storage_format in {"fp4_e2m1_e8m0", "fp8_block_e8m0"}
+        and tensor.storage_format in {"fp4_e2m1_e8m0", "fp8_block_e8m0", "mxfp8_e4m3_e8m0", "nvfp4"}
         for tensor in profile.tensors.values()
     )
     if not needs_conversion:

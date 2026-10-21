@@ -69,10 +69,8 @@ def dequant_fp4_e2m1(weight_packed: torch.Tensor, scale_e8m0: torch.Tensor) -> t
     return (values * expanded_scale).to(torch.bfloat16)
 
 
-register_op("fp4_unpack", "cpu")(unpack_fp4_e2m1)
-register_op("fp4_unpack", "torch")(unpack_fp4_e2m1)
-register_op("fp4_dequant", "cpu")(dequant_fp4_e2m1)
-register_op("fp4_dequant", "torch")(dequant_fp4_e2m1)
+register_op("fp4_unpack")(unpack_fp4_e2m1)
+register_op("fp4_dequant")(dequant_fp4_e2m1)
 
 
 class Fp4E2M1E8M0Format(WeightFormat):

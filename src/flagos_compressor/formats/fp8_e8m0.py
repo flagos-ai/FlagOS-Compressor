@@ -93,10 +93,8 @@ def block_fp8_dequant(
     return dequant
 
 
-register_op("e8m0_decode", "cpu")(decode_e8m0_scale)
-register_op("e8m0_decode", "torch")(decode_e8m0_scale)
-register_op("fp8_dequant", "cpu")(block_fp8_dequant)
-register_op("fp8_dequant", "torch")(block_fp8_dequant)
+register_op("e8m0_decode")(decode_e8m0_scale)
+register_op("fp8_dequant")(block_fp8_dequant)
 
 
 class Fp8BlockE8M0Format(WeightFormat):

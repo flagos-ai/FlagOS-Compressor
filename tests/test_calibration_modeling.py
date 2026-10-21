@@ -48,6 +48,9 @@ def test_transformers_v5_fused_experts_linearize_exactly():
         num_experts=2,
     )
     original = Qwen3MoeExperts(config).eval()
+    # Standalone experts allocate torch.empty weights; no model post_init runs.
+    for parameter in original.parameters():
+        torch.nn.init.normal_(parameter, mean=0.0, std=0.1)
     hidden = torch.randn(5, 8)
     expert_indices = torch.tensor([[0], [1], [0], [1], [1]])
     routing_weights = torch.rand(5, 1)
@@ -71,6 +74,8 @@ def test_linearized_experts_only_observe_router_selected_tokens():
     original = Qwen3MoeExperts(
         Qwen3MoeConfig(hidden_size=8, moe_intermediate_size=4, num_experts=2)
     ).eval()
+    for parameter in original.parameters():
+        torch.nn.init.normal_(parameter, mean=0.0, std=0.1)
     linearized = LinearExperts2D(original)
     observed: dict[int, list[torch.Tensor]] = {0: [], 1: []}
     handles = [

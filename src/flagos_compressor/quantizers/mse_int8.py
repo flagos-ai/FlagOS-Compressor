@@ -24,5 +24,4 @@ def mse_int8_quantize(
     )
 
 
-register_op("mse_int8_quant", "cpu")(mse_int8_quantize)
-register_op("mse_int8_quant", "torch")(mse_int8_quantize)
+register_op("mse_int8_quant")(mse_int8_quantize)

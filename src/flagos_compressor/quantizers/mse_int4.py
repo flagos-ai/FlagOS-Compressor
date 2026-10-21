@@ -22,5 +22,4 @@ def mse_int4_quantize(
     )
 
 
-register_op("mse_int4_quant", "cpu")(mse_int4_quantize)
-register_op("mse_int4_quant", "torch")(mse_int4_quantize)
+register_op("mse_int4_quant")(mse_int4_quantize)

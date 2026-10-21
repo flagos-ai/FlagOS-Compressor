@@ -19,6 +19,13 @@ class TensorInfo:
     module_kind: str | None = None
     tags: tuple[str, ...] = ()
     storage_params: dict[str, Any] = field(default_factory=dict)
+    logical_name: str | None = None
+    global_scale_name: str | None = None
+    auxiliary_names: tuple[str, ...] = ()
+
+    @property
+    def effective_name(self) -> str:
+        return self.logical_name or self.name
 
     @property
     def effective_logical_shape(self) -> tuple[int, ...]:
@@ -78,6 +85,9 @@ class ModelProfile:
                 module_kind=item.get("module_kind"),
                 tags=tuple(item.get("tags") or ()),
                 storage_params=dict(item.get("storage_params") or {}),
+                logical_name=item.get("logical_name"),
+                global_scale_name=item.get("global_scale_name"),
+                auxiliary_names=tuple(item.get("auxiliary_names") or ()),
             )
             for name, item in (data.get("tensors") or {}).items()
         }
