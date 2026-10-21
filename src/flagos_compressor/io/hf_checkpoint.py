@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import struct
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -45,8 +46,23 @@ class HfSafetensorsCheckpoint:
 
     def load_tensor(self, tensor_name: str):
         shard = self.weight_map[tensor_name]
-        state = self.load_shard(shard)
-        return state[tensor_name]
+        with safe_open(self.model_path / shard, framework="pt", device="cpu") as handle:
+            return handle.get_tensor(tensor_name)
+
+    def iter_tensor_metadata(self):
+        """Read safetensors headers without mapping or allocating weight data."""
+        for shard, path in self.iter_shards():
+            with path.open("rb") as handle:
+                prefix = handle.read(8)
+                if len(prefix) != 8:
+                    raise ValueError(f"Truncated safetensors header: {path}")
+                length = struct.unpack("<Q", prefix)[0]
+                if length > 100_000_000 or length > path.stat().st_size - 8:
+                    raise ValueError(f"Invalid safetensors header length: {path}")
+                header = json.loads(handle.read(length))
+            for name, metadata in header.items():
+                if name != "__metadata__":
+                    yield name, shard, metadata
 
     def save_shard(self, output_path: str | Path, shard: str, state_dict: dict) -> None:
         save_file(state_dict, str(Path(output_path) / shard))
@@ -56,6 +72,8 @@ class HfSafetensorsCheckpoint:
         output.mkdir(parents=True, exist_ok=True)
         for item in self.model_path.iterdir():
             if item.name.endswith(".safetensors") or item.name == SAFETENSORS_INDEX:
+                continue
+            if item.name in {".download_complete.json", ".download-partial"}:
                 continue
             target = output / item.name
             if item.is_file():

@@ -18,6 +18,7 @@ class TensorInfo:
     logical_shape: tuple[int, ...] | None = None
     module_kind: str | None = None
     tags: tuple[str, ...] = ()
+    storage_params: dict[str, Any] = field(default_factory=dict)
 
     @property
     def effective_logical_shape(self) -> tuple[int, ...]:
@@ -76,6 +77,7 @@ class ModelProfile:
                 ),
                 module_kind=item.get("module_kind"),
                 tags=tuple(item.get("tags") or ()),
+                storage_params=dict(item.get("storage_params") or {}),
             )
             for name, item in (data.get("tensors") or {}).items()
         }
