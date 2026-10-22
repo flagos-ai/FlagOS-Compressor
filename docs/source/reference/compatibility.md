@@ -38,6 +38,13 @@ Fused Qwen3.5-style expert banks use the logical shape `[num_experts, out_featur
 
 Method and format are coupled: MSE uses `compressed-tensors`, GPTQ uses native `gptq`, AWQ uses native `awq`, and AutoRound uses the GPTQ ABI with AutoRound provenance.
 
+Multi-device checkpoint execution with `--devices` supports all existing MSE
+schemes (including selector-local mixtures) and BF16 conversion. GPTQ, AWQ,
+and AutoRound remain single-device sequential calibration paths. Parallel
+execution distributes whole safetensors shards and does not split one tensor
+across devices; a single-shard source uses one worker. See
+[parallel execution](../how-to/parallel-execution.md).
+
 ## Backend compatibility
 
 The CLI accepts backend names exposed by the local PyTorch environment.
@@ -53,6 +60,10 @@ The CLI accepts backend names exposed by the local PyTorch environment.
 CUDA normally resolves the default device to `cuda:0`. Other registered backend names normally resolve to `<backend>:0` unless `--device` supplies an explicit identifier. For PPU, DCU, or another vendor extension, use the actual backend name registered with PyTorch rather than guessing from the vendor name.
 
 Conversion and non-calibrated MSE quantization may warn and perform operation-level CPU fallback when the requested accelerator is unavailable. Calibrated GPTQ, AWQ, and AutoRound execution requires an available backend and fails rather than silently falling back. Any fallback is functional evidence only, not evidence of target-device performance.
+
+The multi-device `--devices` path requires every requested device to be
+available and disables implicit CPU fallback. CUDA has multi-device hardware
+coverage; other accelerator extensions need their own hardware validation.
 
 ## Runtime compatibility
 

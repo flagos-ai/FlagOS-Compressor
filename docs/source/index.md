@@ -107,6 +107,7 @@ Overview <how-to/index>
 how-to/install
 how-to/convert-fp4-fp8-to-bf16
 how-to/quantize-weights
+how-to/parallel-execution
 how-to/per-selector-quantization
 how-to/select-layers
 how-to/calibrate-models

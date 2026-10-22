@@ -8,6 +8,7 @@ from contextlib import contextmanager
 
 from flagos_compressor.backends.registry import build_backend
 from flagos_compressor.cli.helpers import build_quantization_policy, ensure_no_unmatched, print_plan
+from flagos_compressor.cli.execution import execute_checkpoint, parallel_devices, print_parallel_plan
 from flagos_compressor.core.executor import execute_plan
 from flagos_compressor.core.moe_layout import select_moe_layout
 from flagos_compressor.core.planner import build_quantize_plan
@@ -140,6 +141,7 @@ def run(args) -> None:
     import flagos_compressor.quantizers.register  # noqa: F401
 
     policy = build_quantization_policy(args)
+    devices = parallel_devices(args, method=policy.method)
     if policy.method in {"gptq", "awq", "autoround"}:
         if args.dry_run:
             profile = scan_hf_safetensors(args.input)
@@ -177,14 +179,9 @@ def run(args) -> None:
             )
         if args.dry_run:
             print_plan(plan)
+            print_parallel_plan(args, devices)
             return
-        backend = build_backend(args.backend, args.device)
-        if not backend.is_available():
-            logger.warning(
-                "backend %r is unavailable; CPU fallback may be used.",
-                backend.name,
-            )
-        report = execute_plan(args.input, args.output, plan, backend)
+        report = execute_checkpoint(args, plan, devices)
         logger.info("Done.")
         for name, count in sorted(quantized_counts.items()):
             logger.info("Selected %s tensors/banks: %d", name, count)
@@ -220,12 +217,9 @@ def run(args) -> None:
         )
     if args.dry_run:
         print_plan(plan)
+        print_parallel_plan(args, devices)
         return
-
-    backend = build_backend(args.backend, args.device)
-    if not backend.is_available():
-        logger.warning("backend %r is unavailable; CPU fallback may be used.", backend.name)
-    report = execute_plan(args.input, args.output, plan, backend)
+    report = execute_checkpoint(args, plan, devices)
     logger.info("Done.")
     logger.info("Strategy: %s", policy.strategy)
     if policy.is_w8a8:
