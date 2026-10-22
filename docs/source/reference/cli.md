@@ -27,6 +27,7 @@ flagos-compressor convert [OPTIONS]
 | `--dry-run` | flag | false | Print the conversion plan without writing weights |
 | `--backend` | string | `cpu` | PyTorch backend, such as `cpu`, `cuda`, `npu`, `mlu`, or `musa` |
 | `--device` | string | backend default | Optional device identifier, such as `cuda:0` |
+| `--devices` | device list | none | Parallel conversion; e.g. `0,1` or `cuda:0 cuda:1` with `--backend cuda`. Mutually exclusive with `--device` |
 
 Example:
 
@@ -161,8 +162,17 @@ imported values.
 |--------|------|---------|-------------|
 | `--backend` | string | `cpu` | Backend name exposed by the local PyTorch environment |
 | `--device` | string | backend default | Device identifier |
+| `--devices` | device list | none | Parallel MSE execution; space/comma-separated indices or names matching the backend. Mutually exclusive with `--device` |
 
 The built-in examples are `cpu`, `cuda`, `npu`, `mlu`, and `musa`. Other registered PyTorch device extensions may be used with their actual backend name. An unavailable accelerator can trigger CPU fallback in the non-calibrated execution path. Treat fallback as functional evidence, not target-device performance evidence.
+
+`--devices` supports MSE W4A16, W8A16, W8A8, selector-local mixed schemes,
+and BF16 conversion. Parallel execution disables implicit CPU fallback and
+requires a new or empty output directory. GPTQ, AWQ, and AutoRound reject
+`--devices`; they continue to use sequential calibration with `--device`.
+Dry-run prints parallel placement without accessing the accelerator.
+See [parallel execution](../how-to/parallel-execution.md) for shard granularity,
+memory requirements, reports, and failure handling.
 
 ### Quantize examples
 

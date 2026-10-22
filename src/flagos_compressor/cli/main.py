@@ -16,7 +16,14 @@ def _add_backend_args(parser: argparse.ArgumentParser) -> None:
         default="cpu",
         help="PyTorch device backend, for example cpu, cuda, npu, mlu, or musa.",
     )
-    parser.add_argument("--device")
+    placement = parser.add_mutually_exclusive_group()
+    placement.add_argument("--device")
+    placement.add_argument(
+        "--devices", nargs="+", metavar="DEVICE",
+        help=("Parallel checkpoint execution on these devices, e.g. --backend cuda "
+              "--devices 0,1,2,3 or --devices cuda:0 cuda:1. "
+              "Supports MSE quantization and BF16 conversion."),
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:

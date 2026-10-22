@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
 import re
 
@@ -524,7 +525,7 @@ def _write_quantization_manifest(
             }
     for tensor in plan.kept_tensors:
         if tensor.role == "weight":
-            tensors[tensor.effective_name] = {
+            tensors[tensor.name] = {
                 "logical_name": tensor.effective_name,
                 "format": tensor.storage_format or tensor.dtype,
                 "storage_dtype": tensor.dtype,
@@ -704,12 +705,7 @@ def _write_quantization_manifest(
         json.dump(manifest, f, indent=2, ensure_ascii=False)
 
 
-def execute_plan(
-    input_path: str | Path,
-    output_path: str | Path,
-    plan: ExecutionPlan,
-    backend: QuantBackend,
-) -> ConversionReport:
+def _prepare_output(input_path: str | Path, output_path: str | Path) -> HfSafetensorsCheckpoint:
     from flagos_compressor.inspect.source_transforms import reject_source_transforms
 
     config_path = Path(input_path) / "config.json"
@@ -729,107 +725,123 @@ def execute_plan(
         if manifest_path.exists():
             manifest_path.unlink()
 
-    action_map = _build_action_map(plan)
-    old_scale_names = _build_scale_names(plan)
-    generated_tensor_locations: dict[str, str] = {}
-    output_tensor_locations: dict[str, str] = {}
+    return checkpoint
+
+
+@dataclass
+class ShardResult:
+    shard: str
+    weight_map: dict[str, str]
+    total_size: int
+    generated_tensors: int
+    report: ConversionReport
+
+
+def execute_shard(
+    checkpoint: HfSafetensorsCheckpoint,
+    output: Path,
+    shard_name: str,
+    action_map: dict[str, TensorAction],
+    old_scale_names: set[str],
+    backend: QuantBackend,
+) -> ShardResult:
+    """Shared serial/parallel tensor execution; auxiliary reads use the full index."""
+    current = checkpoint.load_shard(shard_name)
+    new_state: dict = {}
+    generated: set[str] = set()
     report = ConversionReport(backend=backend.name)
     context = BackendRunContext(report=report)
 
-    loaded_shards: dict[str, dict] = {}
-    total_size = 0
-
     def get_tensor(name: str):
-        shard = checkpoint.weight_map[name]
-        if shard not in loaded_shards:
-            loaded_shards[shard] = checkpoint.load_shard(shard)
-        return loaded_shards[shard][name]
+        return current[name] if name in current else checkpoint.load_tensor(name)
 
-    for shard_name, _ in tqdm(list(checkpoint.iter_shards()), desc="Converting"):
-        current = checkpoint.load_shard(shard_name)
-        loaded_shards[shard_name] = current
-        new_state: dict = {}
+    for tensor_name, tensor in current.items():
+        if tensor_name in old_scale_names:
+            report.skipped_scales += 1
+            continue
+        action = action_map.get(tensor_name)
+        if action is None:
+            if tensor_name in new_state:
+                raise ValueError(f"Output tensor collision: {tensor_name}")
+            new_state[tensor_name] = tensor
+            report.kept += 1
+            continue
 
-        for tensor_name, tensor in current.items():
-            if tensor_name in old_scale_names:
-                report.skipped_scales += 1
-                continue
-
-            action = action_map.get(tensor_name)
-            if action is None:
-                new_state[tensor_name] = tensor
-                report.kept += 1
-                continue
-
-            scale = get_tensor(action.tensor.scale_name) if action.tensor.scale_name else None
-            input_format = get_weight_format(action.input_format.name)
-            input_params = dict(action.input_format.params)
-            if action.tensor.global_scale_name:
-                input_params["global_scale"] = get_tensor(action.tensor.global_scale_name)
-            if (
-                action.output_format.name == "bf16"
-                and action.input_format.name in {"fp8_block_e8m0", "fp4_e2m1_e8m0"}
-                and tensor.numel() > 16 * 1024 * 1024
-                and not input_params.get("qkv_groups")
-            ):
-                canonical_weight = dequantize_bf16_cpu(
-                    tensor, scale, input_format, backend, context,
-                    input_params,
-                )
-            else:
-                canonical_weight = input_format.to_canonical(
-                    tensor, scale, backend, context, input_params,
-                )
-            output_format = get_weight_format(action.output_format.name)
-            result = output_format.from_canonical(
-                action.tensor.effective_name,
-                canonical_weight,
-                backend,
-                context,
-                action.output_format.params,
+        scale = get_tensor(action.tensor.scale_name) if action.tensor.scale_name else None
+        input_format = get_weight_format(action.input_format.name)
+        input_params = dict(action.input_format.params)
+        if action.tensor.global_scale_name:
+            input_params["global_scale"] = get_tensor(action.tensor.global_scale_name)
+        if (
+            action.output_format.name == "bf16"
+            and action.input_format.name in {"fp8_block_e8m0", "fp4_e2m1_e8m0"}
+            and tensor.numel() > 16 * 1024 * 1024
+            and not input_params.get("qkv_groups")
+        ):
+            canonical_weight = dequantize_bf16_cpu(
+                tensor, scale, input_format, backend, context, input_params,
             )
-            new_state.update(result.tensors)
-            for output_name in result.tensors:
-                output_tensor_locations[output_name] = shard_name
-            report.converted += 1
-            for generated_name in result.generated_tensor_names:
-                if (
-                    generated_name in checkpoint.weight_map
-                    and generated_name not in old_scale_names
-                    and generated_name != tensor_name
-                ):
-                    raise ValueError(
-                        f"Generated tensor {generated_name!r} collides with an existing tensor"
-                    )
-                generated_tensor_locations[generated_name] = shard_name
-        total_size += sum(item.numel() * item.element_size() for item in new_state.values())
+        else:
+            canonical_weight = input_format.to_canonical(
+                tensor, scale, backend, context, input_params,
+            )
+        result = get_weight_format(action.output_format.name).from_canonical(
+            action.tensor.effective_name, canonical_weight, backend, context,
+            action.output_format.params,
+        )
+        overlap = new_state.keys() & result.tensors.keys()
+        if overlap:
+            raise ValueError(f"Output tensor collision: {sorted(overlap)[:3]}")
+        new_state.update(result.tensors)
+        report.converted += 1
+        for name in result.generated_tensor_names:
+            if name in checkpoint.weight_map and name not in old_scale_names and name != tensor_name:
+                raise ValueError(f"Generated tensor {name!r} collides with an existing tensor")
+            generated.add(name)
+    total_size = sum(t.numel() * t.element_size() for t in new_state.values())
+    checkpoint.save_shard(output, shard_name, new_state)
+    report.finish()
+    return ShardResult(shard_name, dict.fromkeys(new_state, shard_name), total_size,
+                       len(generated), report)
 
-        checkpoint.save_shard(output, shard_name, new_state)
-        while len(loaded_shards) > 2:
-            oldest = next(iter(loaded_shards))
-            del loaded_shards[oldest]
 
-    replaced_input_names = {action.tensor.name for action in plan.actions}
-    new_weight_map = {
-        name: shard
-        for name, shard in checkpoint.weight_map.items()
-        if name not in old_scale_names and name not in replaced_input_names
-    }
-    new_weight_map.update(output_tensor_locations)
-    checkpoint.write_index(output, new_weight_map, total_size=total_size)
+def merge_shard_result(report: ConversionReport, weight_map: dict[str, str], result: ShardResult) -> None:
+    overlap = weight_map.keys() & result.weight_map.keys()
+    if overlap:
+        raise ValueError(f"Output tensor collision between shards: {sorted(overlap)[:3]}")
+    weight_map.update(result.weight_map)
+    report.converted += result.report.converted
+    report.kept += result.report.kept
+    report.skipped_scales += result.report.skipped_scales
+    report.op_events.extend(result.report.op_events)
+    report.warnings.extend(result.report.warnings)
+
+
+def finalize_execution(
+    checkpoint: HfSafetensorsCheckpoint,
+    output: Path,
+    plan: ExecutionPlan,
+    report: ConversionReport,
+    weight_map: dict[str, str],
+    total_size: int,
+    generated_tensors: int,
+) -> ConversionReport:
+    if report.converted != len(plan.actions):
+        raise ValueError(f"Executed {report.converted} actions, expected {len(plan.actions)}")
+    checkpoint.write_index(output, weight_map, total_size=total_size)
     artifact_kind = plan.metadata.get("artifact_kind")
     if artifact_kind == "compressed_tensors":
         quantization_config = _patch_compressed_tensors_config(output, plan)
         _write_quantization_manifest(output, plan, quantization_config)
     else:
         _patch_bf16_config(output, plan)
-    report.output_tensors = len(new_weight_map)
+    report.output_tensors = len(weight_map)
     report.extras.update(
         {
             "artifact_kind": plan.metadata.get("artifact_kind"),
             "input_formats": dict(plan.input_format_counts),
             "output_formats": dict(plan.output_format_counts),
-            "generated_tensors": len(generated_tensor_locations),
+            "generated_tensors": generated_tensors,
         }
     )
     report.finish()
@@ -841,3 +853,23 @@ def execute_plan(
     report.extras["report_file"] = report_filename
     report.save(output / report_filename)
     return report
+
+
+def execute_plan(
+    input_path: str | Path,
+    output_path: str | Path,
+    plan: ExecutionPlan,
+    backend: QuantBackend,
+) -> ConversionReport:
+    checkpoint = _prepare_output(input_path, output_path)
+    output = Path(output_path)
+    report = ConversionReport(backend=backend.name)
+    action_map, old_scale_names = _build_action_map(plan), _build_scale_names(plan)
+    weight_map: dict[str, str] = {}
+    total_size = generated = 0
+    for shard, _ in tqdm(list(checkpoint.iter_shards()), desc="Converting"):
+        result = execute_shard(checkpoint, output, shard, action_map, old_scale_names, backend)
+        merge_shard_result(report, weight_map, result)
+        total_size += result.total_size
+        generated += result.generated_tensors
+    return finalize_execution(checkpoint, output, plan, report, weight_map, total_size, generated)

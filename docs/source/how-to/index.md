@@ -9,6 +9,7 @@ Use these guides when you already know the outcome you want and need the command
 | [Installation guide](install.md) | install the CLI from a local repository checkout |
 | [FP4 and FP8 conversion](convert-fp4-fp8-to-bf16.md) | convert source-quantized FP4 or FP8 checkpoint weights to BF16 |
 | [Weight quantization](quantize-weights.md) | produce W4A16, W8A16, W8A8, GPTQ, AWQ, or AutoRound artifacts |
+| [Parallel execution](parallel-execution.md) | accelerate MSE quantization or BF16 conversion across devices |
 | [Per-selector quantization](per-selector-quantization.md) | assign different MSE W4A16, W8A16, and W8A8 schemes in one command |
 | [Layer selection](select-layers.md) | control which weights are quantized or excluded |
 | [Model calibration](calibrate-models.md) | supply calibration data for calibrated methods |
