@@ -13,7 +13,7 @@ from flagos_compressor.core.moe_layout import ExpertProjection, layout_by_name
 from flagos_compressor.core.plan import ExecutionPlan, TensorAction
 from flagos_compressor.core.report import ConversionReport
 from flagos_compressor.formats.base import get_weight_format
-from flagos_compressor.formats.bf16_chunks import dequantize_bf16_cpu
+from flagos_compressor.formats.bf16_chunks import dequantize_bf16_chunked_to_cpu
 from flagos_compressor.formats.compressed_tensors import (
     compressed_tensor_names,
     int_quantized_tensor_names,
@@ -772,13 +772,16 @@ def execute_shard(
         input_params = dict(action.input_format.params)
         if action.tensor.global_scale_name:
             input_params["global_scale"] = get_tensor(action.tensor.global_scale_name)
+        # The threshold counts stored input elements (packed bytes for FP4).
         if (
             action.output_format.name == "bf16"
             and action.input_format.name in {"fp8_block_e8m0", "fp4_e2m1_e8m0"}
             and tensor.numel() > 16 * 1024 * 1024
             and not input_params.get("qkv_groups")
         ):
-            canonical_weight = dequantize_bf16_cpu(
+            # Compute on the selected backend, but assemble the output on CPU
+            # to avoid holding the complete decoded weight on the accelerator.
+            canonical_weight = dequantize_bf16_chunked_to_cpu(
                 tensor, scale, input_format, backend, context, input_params,
             )
         else:
