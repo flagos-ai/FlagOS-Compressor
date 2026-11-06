@@ -72,6 +72,8 @@ def _run_calibrated(args, policy) -> None:
             samples,
             policy,
             device=device,
+            awq_report_path=(Path(args.output) / "awq_scaling_report.json"
+                             if policy.method == "awq" else None),
         )
         autoround_config = None
         if policy.method == "autoround":

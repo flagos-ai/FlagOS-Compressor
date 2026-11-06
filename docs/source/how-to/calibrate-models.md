@@ -109,6 +109,43 @@ flagos-compressor quantize \
 
 Source FP4 or FP8 weights are staged as BF16 before Transformers loads the calibration model. In Transformers-v5 scenarios, fused experts may be temporarily exposed as per-expert `nn.Linear` modules for calibration.
 
+## AWQ scaling checks
+
+Before AWQ clips or rounds weights, its scaling transforms must preserve the
+floating-point computation within rounding tolerance. A module excluded from
+quantization may still need its weight rescaled if its input was rescaled.
+
+The activation collection pass observes direct connections from proposed scale
+producers to ordinary `nn.Linear` consumers, including unselected projections and branches
+outside the attention/MLP submodule. Full contiguous views that preserve channels
+are recognized. Existing architecture mappings remain necessary for connections
+through routing, copies, functional operations or custom modules; these are not
+inferred merely from equal activation values. Subclasses with custom forwards
+also require explicit mappings. Reusing one Linear on both scaled
+and unrelated inputs, or scaling overlapping parameter storage, fails explicitly.
+
+After all scale searches, the runner compares complete layer tensor outputs and
+the `shared` tensor state used by subsequent layers on up to four evenly spaced
+calibration blocks. Baselines are collected in the existing capture pass. This
+adds at most four layer forwards, not four forwards per expert. Output RMS error
+and maximum error normalized by reference RMS must both pass: thresholds are
+`1e-5 / 1e-4` for FP32, `0.002 / 0.02` for FP16, and `0.02 / 0.2` for BF16.
+Discrete outputs must match exactly; non-finite outputs fail. The check runs
+before quantization, so these tolerances are for floating-point scaling only.
+
+On a failed check or scale search, the current layer's modified parameters are
+restored from exact CPU copies and calibration fails before packing that layer.
+There is no implicit RTN fallback for unsafe scaling. The CLI writes `awq_scaling_report.json` in the output directory; each layer's
+`awq_scaling` entry records discovered consumers, check sample indices,
+tolerances, errors and the outcome. Peak host memory additionally includes the
+modified parameters and the reference outputs of these verification blocks.
+
+This is an observed-data safety check, not a proof for every possible input or
+unvisited expert. New model structures still need scaling-only equivalence tests
+and full-model quality evaluation. A failing check requires investigating the
+mapping, nonlinear operations or stateful forward behavior, rather than simply
+increasing the tolerance.
+
 ## Control sampling
 
 Use these options to make calibration reproducible:

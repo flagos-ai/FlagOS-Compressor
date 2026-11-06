@@ -100,3 +100,54 @@ def test_awq_scale_preserves_zero_centered_qwen_rmsnorm_linear_pair():
     apply_awq_scale(norm, [linear], torch.tensor([0.5, 2.0, 0.25, 4.0]))
 
     torch.testing.assert_close(linear(norm(inputs)), expected)
+
+
+def test_awq_search_uses_export_weight_dtype():
+    torch.manual_seed(46)
+    linear = nn.Linear(128, 64, bias=False, dtype=torch.bfloat16)
+    original = linear.weight.detach().clone()
+    inputs = torch.randn(32, 128, dtype=torch.bfloat16)
+    candidates = []
+    handle = linear.register_forward_pre_hook(
+        lambda module, _args: candidates.append(module.weight.detach().clone()))
+    try:
+        scale = search_awq_scale(linear, [linear], inputs, group_size=128,
+            zero_point=False)
+    finally:
+        handle.remove()
+    # Reproduce the real scale-then-quantize path, folding the activation's
+    # inverse scale back into the weight only for comparison with search.
+    with torch.no_grad():
+        linear.weight.mul_(scale.view(1, -1))
+        quantized = pseudo_quantize_awq(linear.weight, bits=4,
+                                        group_size=128, zero_point=False)
+        folded = (quantized.weight / scale.view(1, -1)).to(original.dtype)
+    assert any(torch.equal(candidate, folded) for candidate in candidates[1:])
+
+
+def test_awq_search_replays_mutable_state_from_the_same_start():
+    class CachedBlock(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.proj = nn.Linear(8, 8, bias=False)
+            self.calls = 0
+
+        def forward(self, x, past_key_values, shared):
+            assert past_key_values["tokens"] == 0
+            assert shared["calls"] == 0
+            past_key_values["tokens"] += x.shape[-2]
+            shared["calls"] += 1
+            self.calls += 1
+            return self.proj(x)
+
+    block = CachedBlock().eval()
+    kwargs = {"past_key_values": {"tokens": 0}, "shared": {"calls": 0}}
+    original = block.proj.weight.detach().clone()
+    scales = search_awq_scale(
+        block, [block.proj], torch.randn(2, 4, 8), kwargs=kwargs,
+        group_size=4, n_grid=4,
+    )
+    assert torch.isfinite(scales).all()
+    assert block.calls == 5  # One reference and four search candidates.
+    assert kwargs == {"past_key_values": {"tokens": 0}, "shared": {"calls": 0}}
+    torch.testing.assert_close(block.proj.weight, original, rtol=0, atol=0)
