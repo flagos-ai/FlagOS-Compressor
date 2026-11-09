@@ -108,7 +108,6 @@ def search_awq_scale(
     if not linears:
         raise ValueError("AWQ scale search requires at least one Linear")
     kwargs = dict(kwargs or {})
-    kwargs.pop("use_cache", None)
     device = next(module.parameters()).device
     inputs = inputs.to(device)
 

@@ -11,6 +11,7 @@ from typing import Any
 import torch
 from torch import nn
 
+from flagos_compressor.calibration.awq_inputs import AWQCall, AWQReplay
 from flagos_compressor.calibration.awq_safety import (
     AWQConsumerDiscovery, AWQScalingCheck, AWQScaleTransaction,
 )
@@ -167,30 +168,18 @@ def _run_samples(
     samples: list[tuple[tuple[Any, ...], dict[str, Any]]],
     device: torch.device,
     *,
+    before_forward=None,
     after_forward=None,
 ) -> None:
     layer.to(device)
     for index, (args, kwargs) in enumerate(samples):
         moved_args = move_to_device(args, device)
         moved_kwargs = prepare_forward_kwargs(layer, kwargs, device)
+        if before_forward is not None:
+            before_forward(index)
         output = layer(*moved_args, **moved_kwargs)
         if after_forward is not None:
             after_forward(index, output, moved_kwargs)
-
-
-def _forward_kwargs_for_submodule(
-    module: nn.Module,
-    sample_kwargs: dict[str, Any],
-    device: torch.device,
-) -> dict[str, Any]:
-    kwargs = sanitize_kwargs(module, sample_kwargs)
-    # AWQ evaluates a captured attention input repeatedly. Reusing a mutable KV
-    # cache would append the same tokens on every grid-search candidate and can
-    # also mix batch shapes across samples (notably on DeepSeek-V4).
-    for cache_name in ("past_key_values", "past_key_value"):
-        if cache_name in kwargs:
-            kwargs[cache_name] = None
-    return move_to_device(kwargs, device)
 
 
 def _capture_awq_input(
@@ -590,6 +579,7 @@ def quantize_layer_awq(
     features: dict[str, list[torch.Tensor]] = {
         name: [] for name in sorted(feature_names)
     }
+    calls = {mapping.inspect_name: [] for mapping in mappings}
     handles = [
         modules[name].register_forward_pre_hook(
             lambda module, args, kwargs, name=name: _capture_awq_input(
@@ -603,9 +593,16 @@ def quantize_layer_awq(
         )
         for name in sorted(feature_names)
     ]
+    handles.extend(
+        modules[name].register_forward_pre_hook(
+            lambda _m, args, kwargs, name=name: calls[name].append(AWQCall.capture(args, kwargs)),
+            with_kwargs=True,
+        ) for name in calls
+    )
     try:
-        with discovery.capture():
-            _run_samples(layer, samples, device, after_forward=scaling_check.observe)
+        with discovery.capture(), scaling_check.capture_branches(layer):
+            _run_samples(layer, samples, device, before_forward=scaling_check.begin_sample,
+                         after_forward=scaling_check.observe)
     finally:
         for handle in handles:
             handle.remove()
@@ -626,18 +623,12 @@ def quantize_layer_awq(
                 previous = modules[mapping.previous_name]
                 search_linears = [linears[name] for name in mapping.quantized_names]
                 balance = [modules[name] for name in mapping.linear_names]
-                inspect_module = modules[mapping.inspect_name]
-                kwargs = (
-                    _forward_kwargs_for_submodule(inspect_module, samples[0][1], device)
-                    if mapping.inspect_name.rsplit(".", 1)[-1] in {"self_attn", "attention", "attn", "linear_attn"}
-                    else {}
-                )
+                inspect_module = AWQReplay(modules[mapping.inspect_name], calls[mapping.inspect_name])
                 transaction.remember(previous, balance)
                 scales = search_awq_scale(
                     inspect_module,
                     search_linears,
                     inputs[mapping.input_name],
-                    kwargs=kwargs,
                     group_size=int(policy.group_size or 128),
                     zero_point=policy.awq.zero_point,
                     duo_scaling=policy.awq.duo_scaling,
@@ -645,6 +636,7 @@ def quantize_layer_awq(
                     max_chunk_memory=policy.awq.max_chunk_memory,
                 )
                 apply_awq_scale(previous, balance, scales)
+                scaling_check.branch_exclusions.add(mapping.previous_name)
                 scaling_check.report["applied_mappings"] += 1
                 for name in mapping.linear_names:
                     if name in inputs:

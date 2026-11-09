@@ -80,7 +80,7 @@ def test_new_floating_branch_is_balanced_but_not_quantized(tmp_path, monkeypatch
     assert sample[1]["shared"] == {"calls": 0}
 
 
-@pytest.mark.parametrize("mode", ["functional", "clone"])
+@pytest.mark.parametrize("mode", ["clone"])
 def test_unrecognized_branch_fails_before_packing_and_restores_weights(tmp_path, monkeypatch, mode):
     torch.manual_seed(4)
     block = BranchedBlock(mode).eval()
@@ -103,7 +103,7 @@ def test_unrecognized_branch_fails_before_packing_and_restores_weights(tmp_path,
     assert all(not m._forward_hooks and not m._forward_pre_hooks for m in block.modules())
 
 
-def test_discovery_rejects_linear_reused_on_scaled_and_unscaled_input():
+def test_discovery_skips_linear_with_known_and_unobserved_inputs():
     class ReusedBlock(BranchedBlock):
         def forward(self, hidden_states):
             return super().forward(hidden_states) + self.self_attn.auxiliary(hidden_states)
@@ -111,8 +111,10 @@ def test_discovery_rejects_linear_reused_on_scaled_and_unscaled_input():
     discovery = AWQConsumerDiscovery(block, infer_awq_mappings(block, {"self_attn.q_proj"}))
     with discovery.capture():
         block(torch.randn(1, 3, 8))
-    with pytest.raises(RuntimeError, match="reused Linear self_attn.auxiliary"):
-        discovery.resolve()
+    resolved, records = discovery.resolve()
+    assert resolved == []
+    assert records[0]["state"] == "skipped"
+    assert "unobserved source" in records[0]["reasons"][0]
 
 
 def test_discovery_observes_conditional_branch_after_first_sample():
@@ -282,3 +284,133 @@ def test_latent_query_branch_is_discovered_without_a_deepseek_class_name():
                         torch.tensor([0.5, 2.] * 4))
     check.verify(block, samples, torch.device("cpu"))
     assert check.report["state"] == "passed"
+
+
+@pytest.mark.parametrize("mode", ["functional", "alternating"])
+def test_uncertain_connection_skips_scaling_and_continues_quantization(tmp_path, monkeypatch, mode):
+    class AlternatingAttention(AttentionWithExtraBranch):
+        def __init__(self):
+            super().__init__()
+            self.calls = 0
+        def forward(self, hidden_states):
+            self.mode = "direct" if self.calls % 2 == 0 else "clone"
+            self.calls += 1
+            return super().forward(hidden_states)
+    block = BranchedBlock("functional").eval()
+    if mode == "alternating":
+        block.self_attn = AlternatingAttention()
+    original_norm = block.input_layernorm.weight.detach().clone()
+    original_auxiliary = block.self_attn.auxiliary.weight.detach().clone()
+    with torch.no_grad():
+        block.self_attn.auxiliary.weight.mul_(0.03)
+        original_auxiliary.mul_(0.03)
+    def no_search(*args, **kwargs):
+        pytest.fail("uncertain mapping must not be scaled")
+    monkeypatch.setattr("flagos_compressor.calibration.runner.search_awq_scale", no_search)
+    path = tmp_path / "report.json"
+    result = quantize_model_sequential([("model.layers.0", block)],
+        [((torch.randn(1, 4, 8),), {}) for _ in range(2)], policy(),
+        device=torch.device("cpu"), awq_report_path=path)
+    assert result
+    torch.testing.assert_close(block.input_layernorm.weight, original_norm, rtol=0, atol=0)
+    torch.testing.assert_close(block.self_attn.auxiliary.weight, original_auxiliary, rtol=0, atol=0)
+    report = json.loads(path.read_text())["layers"][0]["awq_scaling"]
+    assert report["state"] == "passed"
+    assert report["applied_mappings"] == 0
+    assert report["mappings"][0]["state"] == "skipped"
+    assert report["mappings"][0]["reasons"]
+
+
+def test_known_conflicting_producers_are_distinct_from_unobserved_inputs():
+    from flagos_compressor.calibration.mappings import AWQMapping
+    class Block(BranchedBlock):
+        def __init__(self):
+            super().__init__()
+            self.other_norm = nn.LayerNorm(8)
+        def forward(self, x):
+            return super().forward(x) + self.self_attn.auxiliary(self.other_norm(x))
+    block = Block()
+    mappings = infer_awq_mappings(block, {"self_attn.q_proj"})
+    mappings.append(AWQMapping("other_norm", ("self_attn.q_proj",),
+                              ("self_attn.q_proj",), "self_attn", "self_attn"))
+    discovery = AWQConsumerDiscovery(block, mappings)
+    with discovery.capture():
+        block(torch.randn(1, 3, 8))
+    assert discovery.uses["self_attn.auxiliary"] == {"input_layernorm", "other_norm"}
+    with pytest.raises(RuntimeError, match="reused Linear"):
+        discovery.resolve()
+
+
+def test_small_bf16_branch_error_cannot_hide_in_whole_layer_rms(tmp_path, monkeypatch):
+    torch.manual_seed(14)
+    block = BranchedBlock("clone").to(torch.bfloat16).eval()
+    with torch.no_grad():
+        block.self_attn.auxiliary.weight.mul_(0.01)
+    original = copy.deepcopy(block.state_dict())
+    force_scale(monkeypatch)
+    path = tmp_path / "report.json"
+    with pytest.raises(RuntimeError, match="branch.self_attn.auxiliary"):
+        quantize_model_sequential([("model.layers.0", block)],
+            [((torch.randn(1, 32, 8).bfloat16(),), {})], policy(),
+            device=torch.device("cpu"), awq_report_path=path)
+    report = json.loads(path.read_text())["layers"][0]["awq_scaling"]
+    assert report["failure"]["output"].startswith("branch.self_attn.auxiliary")
+    assert report["weights_restored"]
+    for name, tensor in block.state_dict().items():
+        torch.testing.assert_close(tensor, original[name], rtol=0, atol=0)
+
+
+@pytest.mark.parametrize("overlap", [False, True])
+def test_strided_fused_views_use_actual_storage_elements_and_restore(overlap):
+    block = BranchedBlock()
+    # Common fused storage: transpose first, then split output channels.
+    bank = torch.randn(8, 16)
+    block.self_attn.q_proj.weight = nn.Parameter(bank.T[:8])
+    block.self_attn.auxiliary.weight = nn.Parameter(bank.T[7:15] if overlap else bank.T[8:])
+    assert not block.self_attn.q_proj.weight.is_contiguous()
+    original = bank.clone()
+    if overlap:
+        with pytest.raises(RuntimeError, match="aliased parameters"):
+            with AWQScaleTransaction(block) as transaction:
+                transaction.remember(block.input_layernorm, [block.self_attn.q_proj])
+    else:
+        with pytest.raises(RuntimeError, match="rollback"):
+            with AWQScaleTransaction(block) as transaction:
+                transaction.remember(block.input_layernorm,
+                                     [block.self_attn.q_proj, block.self_attn.auxiliary])
+                apply_awq_scale(block.input_layernorm,
+                    [block.self_attn.q_proj, block.self_attn.auxiliary], torch.full((8,), 2.))
+                raise RuntimeError("rollback")
+        torch.testing.assert_close(bank, original, rtol=0, atol=0)
+
+
+def test_inference_mode_fails_explicitly_and_removes_hooks():
+    block = BranchedBlock()
+    with torch.inference_mode(), pytest.raises(RuntimeError, match="version counters"):
+        quantize_model_sequential([("model.layers.0", block)],
+            [((torch.randn(1, 4, 8),), {})], policy(), device=torch.device("cpu"))
+    assert all(not m._forward_hooks and not m._forward_pre_hooks for m in block.modules())
+
+
+def test_cache_mutation_is_checked_even_if_output_is_unchanged():
+    from types import SimpleNamespace
+    from flagos_compressor.calibration.runner import _run_samples
+    class Block(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.scale = nn.Parameter(torch.ones(8))
+        def forward(self, x, past_key_values):
+            assert past_key_values.steps == 0
+            past_key_values.steps += 1
+            past_key_values.keys = x * self.scale
+            return torch.zeros_like(x)
+    block = Block().eval()
+    cache = SimpleNamespace(steps=0, keys=None)
+    samples = [((torch.ones(1, 4, 8),), {"past_key_values": cache})]
+    check = AWQScalingCheck(block, samples)
+    _run_samples(block, samples, torch.device("cpu"), after_forward=check.observe)
+    with torch.no_grad():
+        block.scale.mul_(2)
+    with pytest.raises(RuntimeError, match="past_key_values.keys"):
+        check.verify(block, samples, torch.device("cpu"))
+    assert cache.steps == 0 and cache.keys is None
