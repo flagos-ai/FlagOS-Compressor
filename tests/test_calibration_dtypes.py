@@ -1,3 +1,5 @@
+import json
+
 import pytest
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaConfig, LlamaForCausalLM
@@ -86,3 +88,34 @@ def test_native_fp32_survives_loading_calibration_and_export(
         torch.testing.assert_close(exported, original, rtol=0, atol=0)
     assert checkpoint.load_tensor("model.embed_tokens.weight").dtype == torch.bfloat16
     assert checkpoint.load_tensor("native_int_buffer").dtype == torch.int64
+
+
+@pytest.mark.parametrize("target", ["bfloat16", "float16", "float32"])
+def test_uniform_fp32_checkpoint_respects_requested_load_dtype(tmp_path, monkeypatch, target):
+    config = LlamaConfig(hidden_size=16, intermediate_size=32, num_hidden_layers=1,
+                         num_attention_heads=2, num_key_value_heads=2, vocab_size=32)
+    source = LlamaForCausalLM(config).float().eval()
+    source.save_pretrained(tmp_path)
+    config_path = tmp_path / "config.json"
+    saved = json.loads(config_path.read_text())
+    saved.update(dtype=target, torch_dtype=target)
+    config_path.write_text(json.dumps(saved))
+    monkeypatch.setattr(AutoTokenizer, "from_pretrained", lambda *args, **kwargs: object())
+    model, _ = load_transformers_model(tmp_path)
+    assert all(parameter.dtype == getattr(torch, target) for parameter in model.parameters())
+
+
+def test_declared_fp32_exception_survives_uniform_source_cast(tmp_path):
+    from flagos_compressor.calibration.modeling import _restore_source_fp32
+    from safetensors.torch import save_file
+
+    model = torch.nn.Module()
+    model.weight = torch.nn.Parameter(torch.ones(8, 8, dtype=torch.bfloat16))
+    model.special = torch.nn.Parameter(torch.ones(2, dtype=torch.bfloat16))
+    model._keep_in_fp32_modules = ["special"]
+    original = torch.tensor([1.0003, -0.01003])
+    save_file({"weight": torch.ones(8, 8), "special": original}, tmp_path / "model.safetensors")
+    _restore_source_fp32(model, tmp_path)
+    assert model.weight.dtype == torch.bfloat16
+    assert model.special.dtype == torch.float32
+    torch.testing.assert_close(model.special, original, rtol=0, atol=0)

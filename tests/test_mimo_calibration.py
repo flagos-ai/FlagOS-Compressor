@@ -18,15 +18,14 @@ from flagos_compressor.calibration.runner import quantize_model_sequential
 from flagos_compressor.core.policy import AWQPolicy, AutoRoundPolicy, QuantizationPolicy
 
 
-class _HybridModel(nn.Module):
+class _HybridBackbone(nn.Module):
     """Real attention blocks with MiMo's global/SWA mask and RoPE selection."""
 
     # MiMo remote code does not supply the usual decoder discovery metadata.
     _no_split_modules = []
 
-    def __init__(self, pattern):
+    def __init__(self, pattern, swa_name="sliding_window_attention"):
         super().__init__()
-        self.config = SimpleNamespace(model_type="mimo_v2")
         config = LlamaConfig(
             hidden_size=16,
             intermediate_size=32,
@@ -41,32 +40,32 @@ class _HybridModel(nn.Module):
             rope_parameters={"rope_type": "default", "rope_theta": 10000.0},
         )
         config._attn_implementation = "eager"
-        self.model = nn.Module()
-        self.model.config = config
-        self.model.embed_tokens = nn.Embedding(32, 16)
-        self.model.layers = nn.ModuleList(
+        self.config = config
+        self.embed_tokens = nn.Embedding(32, 16)
+        self.layers = nn.ModuleList(
             LlamaDecoderLayer(config, index) for index in range(len(pattern))
         )
-        for layer, is_swa in zip(self.model.layers, pattern):
+        for layer, is_swa in zip(self.layers, pattern):
             layer.attention_type = (
-                "sliding_window_attention" if is_swa else "full_attention"
+                swa_name if is_swa else "full_attention"
             )
-        self.model.rotary_emb = LlamaRotaryEmbedding(config)
+        self.rotary_emb = LlamaRotaryEmbedding(config)
         swa_config = copy.deepcopy(config)
         swa_config.rope_parameters = {"rope_type": "default", "rope_theta": 100.0}
-        self.model.swa_rotary_emb = LlamaRotaryEmbedding(swa_config)
+        self.swa_rotary_emb = LlamaRotaryEmbedding(swa_config)
+        self.embedding_scale = 1.5
         self.eval()
 
     def reference_kwargs(self, batch, layer):
-        hidden = self.model.embed_tokens(batch["input_ids"])
+        hidden = self.embed_tokens(batch["input_ids"])
         length = hidden.shape[1]
         positions = batch.get("position_ids", torch.arange(length).unsqueeze(0))
         indices = torch.arange(length)
         visible = indices[None, :] <= indices[:, None]
-        rotary = self.model.rotary_emb
-        if layer.attention_type == "sliding_window_attention":
+        rotary = self.rotary_emb
+        if layer.attention_type in ("sliding_window_attention", "sliding_attention"):
             visible &= indices[None, :] > indices[:, None] - 3
-            rotary = self.model.swa_rotary_emb
+            rotary = self.swa_rotary_emb
         visible = visible[None, None] & batch["attention_mask"][:, None, None, :].bool()
         mask = torch.zeros(visible.shape, dtype=hidden.dtype)
         mask.masked_fill_(~visible, torch.finfo(hidden.dtype).min)
@@ -80,6 +79,34 @@ class _HybridModel(nn.Module):
         }
 
 
+    def forward(self, input_ids, attention_mask, position_ids=None, use_cache=False):
+        batch = {"input_ids": input_ids, "attention_mask": attention_mask}
+        if position_ids is not None:
+            batch["position_ids"] = position_ids
+        hidden = self.embed_tokens(input_ids) * self.embedding_scale
+        for layer in self.layers:
+            options = self.reference_kwargs(batch, layer)
+            options["capture_marker"] = torch.tensor([7])
+            hidden = layer(hidden, **options)
+        return hidden
+
+
+class _HybridModel(nn.Module):
+    _no_split_modules = []
+
+    def __init__(self, pattern, swa_name="sliding_window_attention"):
+        super().__init__()
+        self.config = SimpleNamespace(model_type="mimo_v2", num_hidden_layers=len(pattern))
+        self.model = _HybridBackbone(pattern, swa_name)
+        self.eval()
+
+    def forward(self, **kwargs):
+        return self.model(**kwargs)
+
+    def reference_kwargs(self, batch, layer):
+        return self.model.reference_kwargs(batch, layer)
+
+
 def _batches():
     return [
         {"input_ids": torch.randint(0, 32, (1, 8)),
@@ -91,20 +118,26 @@ def _batches():
 
 
 @pytest.mark.parametrize("pattern", [(0, 1, 0), (1, 0, 1)])
-def test_hybrid_layer_replay_matches_full_forward(pattern):
+@pytest.mark.parametrize("swa_name", ["sliding_window_attention", "sliding_attention"])
+@pytest.mark.parametrize("batch_size", [1, 2])
+def test_hybrid_layer_replay_matches_full_forward(pattern, swa_name, batch_size):
     torch.manual_seed(42)
-    model = _HybridModel(pattern)
+    model = _HybridModel(pattern, swa_name)
     layers = decoder_layers(model)
-    batches = _batches()
+    batches = [{key: value.expand(batch_size, -1) for key, value in batch.items()}
+               for batch in _batches()]
     samples, layer_kwargs = prepare_calibration_inputs(
         model, layers, batches, device=torch.device("cpu")
     )
     with torch.no_grad():
         for sample_index, batch in enumerate(batches):
-            expected = model.model.embed_tokens(batch["input_ids"])
+            expected = model.model.embed_tokens(batch["input_ids"]) * model.model.embedding_scale
             actual = samples[sample_index][0][0]
+            torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+            assert actual.device.type == "cpu"
             wrong = actual
             for name, layer in layers:
+                assert layer_kwargs[name][sample_index]["capture_marker"].item() == 7
                 reference = model.reference_kwargs(batch, layer)
                 options = layer_kwargs[name][sample_index]
                 torch.testing.assert_close(options["attention_mask"], reference["attention_mask"])
@@ -115,6 +148,7 @@ def test_hybrid_layer_replay_matches_full_forward(pattern):
                 actual = layer(actual, **options)
                 wrong = layer(wrong, **samples[sample_index][1])
             torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+            torch.testing.assert_close(actual, model(**batch), rtol=0, atol=0)
             assert not torch.allclose(wrong, expected, rtol=1e-4, atol=1e-5)
 
 
@@ -171,3 +205,55 @@ def test_non_mimo_uses_existing_first_layer_capture():
     )
     assert layer_kwargs is None
     assert len(forward_layer_samples(layers[0][1], samples, device=torch.device("cpu"))) == 1
+
+
+def test_mimo_discovery_prefers_standard_contract_and_registered_names():
+    model = _HybridModel((0, 1))
+    # Move the real modules to a nested registered path.
+    backbone = model.model
+    del model.model
+    model.language_model = backbone
+    model._no_split_modules = ["LlamaDecoderLayer"]
+    assert [name for name, _ in decoder_layers(model)] == [
+        "language_model.layers.0", "language_model.layers.1"]
+    # A second decoder-like list must not override a valid standard contract.
+    class OtherDecoder(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.attention_type = "full_attention"
+            self.self_attn = nn.Identity()
+            self.mlp = nn.Identity()
+    model.other = nn.ModuleList([OtherDecoder(), OtherDecoder()])
+    assert len(decoder_layers(model)) == 2
+    model._no_split_modules = []
+    with pytest.raises(RuntimeError, match="uniquely"):
+        decoder_layers(model)
+    del model.other
+    assert [name for name, _ in decoder_layers(model)] == [
+        "language_model.layers.0", "language_model.layers.1"]
+
+
+def test_mask_api_compatibility_is_scoped_to_the_backbone(monkeypatch):
+    from flagos_compressor.calibration.inputs import _mimo_mask_compat
+
+    def modern_mask(*, inputs_embeds):
+        return inputs_embeds + 1
+
+    # Mimic remote forward code which imports a newer HF helper but still
+    # calls it with the older argument names.
+    monkeypatch.setitem(globals(), "create_causal_mask", modern_mask)
+    class Backbone(nn.Module):
+        def forward(self, value):
+            return create_causal_mask(input_embeds=value, cache_position=None)
+
+    backbone, other = Backbone(), Backbone()
+    with pytest.raises(TypeError):
+        backbone(torch.ones(1))
+    with _mimo_mask_compat(backbone):
+        torch.testing.assert_close(backbone(torch.ones(1)), torch.full((1,), 2.))
+        assert globals()["create_causal_mask"] is modern_mask
+        with pytest.raises(TypeError):
+            other(torch.ones(1))
+    assert "forward" not in backbone.__dict__
+    with pytest.raises(TypeError):
+        backbone(torch.ones(1))
