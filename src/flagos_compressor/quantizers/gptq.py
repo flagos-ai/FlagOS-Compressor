@@ -62,34 +62,34 @@ def _fake_quantize(
     return scale * (codes - zero)
 
 
-def _inverse_hessian_factor(
-    hessian: torch.Tensor,
-    *,
-    reverse: bool = False,
-) -> torch.Tensor:
+def _inverse_hessian_factor(hessian: torch.Tensor) -> torch.Tensor:
     """Return the upper factor U satisfying U.T @ U = inverse(hessian).
 
     With reversal matrix J, chol(J H J) = L gives H = T T.T for
-    T = J L J. Thus U = inverse(T) is the desired upper factor. The
-    triangular solve avoids cholesky_inverse's torch_npu CPU fallback and
-    the second Cholesky decomposition without changing GPTQ's column order.
+    T = J L J. Thus U = inverse(T) is the desired upper factor.
+    All backends use this factorization: it avoids forming inverse(H) and
+    decomposing it again, as well as cholesky_inverse's torch_npu CPU fallback.
+    Reversing both axes preserves GPTQ's original column order. Floating-point
+    results need not be bitwise identical across devices or to the old method.
     """
-    factor_input = hessian.flip((-2, -1)) if reverse else hessian
     try:
-        factor = torch.linalg.cholesky(factor_input)
-    except RuntimeError as exc:
+        factor = torch.linalg.cholesky(hessian.flip((-2, -1)))
+    except torch.linalg.LinAlgError as exc:
         raise RuntimeError(
             "GPTQ Hessian is not positive definite; increase damp_percent or "
             "use more calibration samples"
         ) from exc
-    if reverse:
-        upper = factor.flip((-2, -1))
-        identity = torch.eye(
-            hessian.shape[-1], dtype=hessian.dtype, device=hessian.device
+    upper = factor.flip((-2, -1))
+    identity = torch.eye(hessian.shape[-1], dtype=hessian.dtype, device=hessian.device)
+    # Preserve unsupported-kernel and device errors instead of misdiagnosing
+    # them as a non-positive Hessian. Singular solves may return NaN/Inf.
+    result = torch.linalg.solve_triangular(upper, identity, upper=True)
+    if not torch.isfinite(result).all():
+        raise RuntimeError(
+            "GPTQ Hessian factor contains NaN or infinity; increase damp_percent "
+            "or use more calibration samples"
         )
-        return torch.linalg.solve_triangular(upper, identity, upper=True)
-    inverse = torch.cholesky_inverse(factor)
-    return torch.linalg.cholesky(inverse, upper=True)
+    return result
 
 
 class GPTQQuantizer:
@@ -183,9 +183,7 @@ class GPTQQuantizer:
         damp = damp_percent * torch.mean(torch.diag(hessian))
         diagonal = torch.arange(self.columns, device=weight.device)
         hessian[diagonal, diagonal] += damp
-        hessian_inverse = _inverse_hessian_factor(
-            hessian, reverse=hessian.device.type == "npu"
-        )
+        hessian_inverse = _inverse_hessian_factor(hessian)
 
         quantized = torch.zeros_like(weight)
         current_params: tuple[torch.Tensor, torch.Tensor] | None = None
