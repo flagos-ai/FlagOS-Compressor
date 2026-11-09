@@ -65,3 +65,7 @@ def dequantize_bf16_chunked_to_cpu(weight, scale, input_format, backend, context
     ):
         result[start : start + chunk.shape[0]].copy_(chunk)
     return result
+
+
+# Deprecated compatibility name; retain for the first release with the rename.
+dequantize_bf16_cpu = dequantize_bf16_chunked_to_cpu

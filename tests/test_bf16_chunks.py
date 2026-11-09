@@ -9,6 +9,14 @@ from flagos_compressor.formats.base import get_weight_format
 from flagos_compressor.formats.bf16_chunks import iter_bf16_chunks
 
 
+def test_previous_dequantization_name_remains_importable():
+    from flagos_compressor.formats.bf16_chunks import (
+        dequantize_bf16_cpu, dequantize_bf16_chunked_to_cpu,
+    )
+
+    assert dequantize_bf16_cpu is dequantize_bf16_chunked_to_cpu
+
+
 @pytest.fixture(params=["cpu", "cuda"])
 def backend(request):
     if request.param == "cuda" and not torch.cuda.is_available():

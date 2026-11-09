@@ -98,6 +98,7 @@ def test_parallel_reads_cross_shard_microscaling_dependencies(tmp_path, backend,
 
 
 def test_parallel_uses_recipe_and_preserves_unselected_source_formats(tmp_path):
+    from flagos_compressor.inspect.checkpoint_scanner import scan_hf_safetensors
     from test_microscaling_inputs import make_source
     source, serial, parallel = (tmp_path / p for p in ("source", "serial", "parallel"))
     make_source(source)
@@ -115,6 +116,24 @@ unselected:
     main([*args, "--output", str(serial)])
     main([*args, "--output", str(parallel), "--devices", "cpu:0", "cpu:1"])
     assert_same_artifact(serial, parallel)
+    source_profile = scan_hf_safetensors(source)
+    for output in (serial, parallel):
+        manifest = json.loads((output / "quantization_manifest.json").read_text())["tensors"]
+        rescanned = scan_hf_safetensors(output)
+        preserved = [tensor for tensor in source_profile.tensors.values()
+                     if tensor.storage_format == "nvfp4"]
+        assert len(preserved) == 3
+        for tensor in preserved:
+            assert tensor.name.endswith(".weight_packed")
+            assert tensor.effective_name not in manifest
+            assert manifest[tensor.name]["logical_name"] == tensor.effective_name
+            assert manifest[tensor.name]["kept_from_source"]
+            actual = rescanned.tensors[tensor.name]
+            assert actual.storage_format == "nvfp4"
+            assert actual.effective_name == tensor.effective_name
+            assert actual.effective_logical_shape == tensor.effective_logical_shape
+            assert actual.scale_name == tensor.scale_name
+            assert actual.global_scale_name == tensor.global_scale_name
 
 
 def test_parallel_failure_leaves_incomplete_and_joins_workers(tmp_path):

@@ -1,4 +1,5 @@
 import json
+import importlib.util
 from pathlib import Path
 import subprocess
 import sys
@@ -8,6 +9,40 @@ import torch
 from safetensors.torch import save_file
 
 from flagos_compressor.core.validation import validate_artifact
+
+
+def test_compatibility_entry_point_forwards_arguments_and_copies_report(tmp_path, monkeypatch):
+    root = Path(__file__).resolve().parents[1]
+    spec = importlib.util.spec_from_file_location("parallel_w8a8", root / "examples/parallel_w8a8.py")
+    shim = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(shim)
+    source, output, work = (tmp_path / name for name in ("source", "output", "work"))
+    calls = []
+
+    def cli(command):
+        calls.append(command)
+        output.mkdir()
+        (output / "quantization_report.json").write_text('{"converted": 3}\n')
+
+    monkeypatch.setattr(shim, "compressor_main", cli)
+    monkeypatch.setattr(sys, "argv", [
+        "parallel_w8a8.py", "--input", str(source), "--output", str(output),
+        "--work-dir", str(work), "--gpus", "1,3", "--n-candidates", "8",
+        "--include-name", "q_proj", "--include-name", "k_proj",
+        "--exclude-name", "vision", "--profile-cache", "old-profile.json",
+    ])
+    with pytest.warns(FutureWarning, match="deprecated and ignored"):
+        assert shim.main() is None
+    expected = [
+        "quantize", "--input", str(source), "--output", str(output),
+        "--select", "linear", "--bits", "8", "--activation-bits", "8",
+        "--strategy", "channel", "--n-candidates", "8", "--backend", "cuda",
+        "--devices", "1,3", "--select-name", "q_proj", "--select-name", "k_proj",
+        "--exclude-name", "vision",
+    ]
+    assert calls == [expected]
+    assert json.loads((work / "command.json").read_text()) == expected
+    assert (work / "quantization_report.json").read_bytes() == (output / "quantization_report.json").read_bytes()
 
 
 def make_source(source):
