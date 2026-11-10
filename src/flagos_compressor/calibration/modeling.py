@@ -3,11 +3,56 @@
 from __future__ import annotations
 
 import inspect
+from collections import Counter
+from math import prod
 from pathlib import Path
 from typing import Any
 
 import torch
 from torch import nn
+
+
+@torch.no_grad()
+def _restore_source_fp32(model: nn.Module, model_path: str | Path) -> None:
+    """Recover FP32 exceptions without undoing an intentional model-wide cast.
+
+    Casting the loaded tensor back to FP32 cannot recover its original values.
+    Restore from the checkpoint before calibration and expert linearization;
+    native export will then retain the dtype through the model state dict.
+    """
+    from flagos_compressor.io.hf_checkpoint import HfSafetensorsCheckpoint
+
+    checkpoint = HfSafetensorsCheckpoint(model_path)
+    state = model.state_dict(keep_vars=True)
+    metadata_entries = list(checkpoint.iter_tensor_metadata())
+    stored_elements = Counter()
+    for name, _shard, metadata in metadata_entries:
+        if name in state and state[name].is_floating_point():
+            stored_elements[metadata["dtype"]] += prod(metadata["shape"])
+    # A mixed checkpoint's small FP32 exceptions should survive loading. A
+    # wholly FP32 checkpoint requested in BF16/FP16 is an intentional cast.
+    reduced_elements = stored_elements["BF16"] + stored_elements["F16"]
+    mixed_source = reduced_elements > stored_elements["F32"]
+    declared = set(getattr(model, "_keep_in_fp32_modules", None) or ())
+    declared.update(getattr(model, "_keep_in_fp32_modules_strict", None) or ())
+    config = getattr(model, "config", None)
+    config = getattr(config, "text_config", config)
+    if getattr(config, "model_type", None) == "mimo_v2":
+        declared.update(("attention_sink_bias", "e_score_correction_bias"))
+    for name, _shard, metadata in metadata_entries:
+        tensor = state.get(name)
+        if metadata["dtype"] != "F32" or tensor is None:
+            continue
+        if tensor.dtype == torch.float32:
+            continue
+        explicitly_kept = any(f".{part}." in f".{name}." for part in declared)
+        if not explicitly_kept and not (
+            mixed_source and tensor.dtype in (torch.bfloat16, torch.float16)
+        ):
+            continue
+        if list(tensor.shape) != metadata["shape"]:
+            raise ValueError(f"Source FP32 tensor {name} changed shape during loading")
+        tensor.data = checkpoint.load_tensor(name).to(device=tensor.device)
 
 
 def load_transformers_model(
@@ -27,6 +72,7 @@ def load_transformers_model(
         low_cpu_mem_usage=False,
         trust_remote_code=trust_remote_code,
     )
+    _restore_source_fp32(model, model_path)
     tokenizer = AutoTokenizer.from_pretrained(
         model_path,
         trust_remote_code=trust_remote_code,
@@ -46,10 +92,17 @@ def load_transformers_model(
 
 def decoder_layers(model: nn.Module) -> list[tuple[str, nn.Module]]:
     """Discover ordered decoder blocks using the Transformers no-split contract."""
+    config = getattr(model, "config", None)
+    config = getattr(config, "text_config", config)
+    is_mimo = getattr(config, "model_type", None) == "mimo_v2"
     try:
         class_names = set(model._get_no_split_modules("auto"))
     except AttributeError:
-        class_names = set(getattr(model, "_no_split_modules", []))
+        class_names = set(getattr(model, "_no_split_modules", None) or ())
+    except ValueError:
+        if not is_mimo:
+            raise
+        class_names = set()
     candidates = [
         (name, module)
         for name, module in model.named_modules()
@@ -63,6 +116,21 @@ def decoder_layers(model: nn.Module) -> list[tuple[str, nn.Module]]:
         for name, module in candidates
         if not any(name.startswith(parent + ".") for parent in names if parent != name)
     ]
+    if not result and is_mimo:
+        # Older remote MiMo models omit no-split metadata. Locate the decoder
+        # container, retaining registered module names for selectors/export.
+        expected_count = getattr(config, "num_hidden_layers", None)
+        containers = [
+            module for _, module in model.named_modules()
+            if isinstance(module, nn.ModuleList) and len(module)
+            and (expected_count is None or len(module) == expected_count)
+            and all(hasattr(layer, "attention_type") and hasattr(layer, "self_attn")
+                    and hasattr(layer, "mlp") for layer in module)
+        ]
+        if len(containers) != 1:
+            raise RuntimeError("Cannot uniquely identify MiMo decoder layers")
+        names_by_id = {id(module): name for name, module in model.named_modules()}
+        result = [(names_by_id[id(layer)], layer) for layer in containers[0]]
     if not result:
         raise RuntimeError(
             "Transformers did not expose decoder layers through _no_split_modules; "
