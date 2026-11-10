@@ -414,3 +414,39 @@ def test_cache_mutation_is_checked_even_if_output_is_unchanged():
     with pytest.raises(RuntimeError, match="past_key_values.keys"):
         check.verify(block, samples, torch.device("cpu"))
     assert cache.steps == 0 and cache.keys is None
+
+
+def test_bf16_outlier_one_ulp_is_not_a_scaling_failure():
+    block = nn.Linear(8, 8, dtype=torch.bfloat16)
+    check = AWQScalingCheck(block, [((torch.ones(1, 8, dtype=torch.bfloat16),), {})])
+    reference = torch.ones(8192, dtype=torch.bfloat16)
+    reference[0] = 1024
+    actual = reference.clone()
+    actual[0] = torch.nextafter(reference[0], torch.tensor(float('inf'), dtype=torch.bfloat16))
+    passed, error = check._compare(reference, actual)
+    assert error['max_error_over_rms'] > 0.2
+    assert passed
+
+
+@pytest.mark.parametrize('reference_at_error,delta', [(100, 4), (0, 0.5)])
+def test_local_corruption_is_rejected_even_when_global_rms_passes(reference_at_error, delta):
+    block = nn.Linear(8, 8, dtype=torch.bfloat16)
+    check = AWQScalingCheck(block, [((torch.ones(1, 8, dtype=torch.bfloat16),), {})])
+    reference = torch.ones(65536, dtype=torch.bfloat16)
+    reference[0] = reference_at_error
+    actual = reference.clone()
+    actual[0] += delta
+    passed, error = check._compare(reference, actual)
+    assert error['relative_rms_error'] < 0.02
+    assert error['max_error_over_elementwise_tolerance'] > 1
+    assert not passed
+
+
+def test_global_drift_remains_rejected_with_outlier_aware_local_bound():
+    block = nn.Linear(8, 8, dtype=torch.bfloat16)
+    check = AWQScalingCheck(block, [((torch.ones(1, 8, dtype=torch.bfloat16),), {})])
+    reference = torch.ones(1024, dtype=torch.bfloat16)
+    passed, error = check._compare(reference, reference * 1.05)
+    assert error['max_error_over_elementwise_tolerance'] < 1
+    assert error['relative_rms_error'] > 0.02
+    assert not passed

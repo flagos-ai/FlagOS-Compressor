@@ -211,9 +211,10 @@ class AWQScalingCheck:
                        "scope": "recorded layer outputs, cache/shared state and sampled Linear branch outputs; not a graph proof",
                        "branch_elements_per_call": 2048,
                        "tolerances_by_output_dtype": {
-                           "bfloat16": {"relative_rms": 0.02, "max_over_rms": 0.2},
-                           "float16": {"relative_rms": 0.002, "max_over_rms": 0.02},
-                           "float32": {"relative_rms": 1e-5, "max_over_rms": 1e-4}},
+                           "bfloat16": {"relative_rms": 0.02, "absolute_over_rms": 0.2, "relative_elementwise": 0.02},
+                           "float16": {"relative_rms": 0.002, "absolute_over_rms": 0.02, "relative_elementwise": 0.002},
+                           "float32": {"relative_rms": 1e-5, "absolute_over_rms": 1e-4, "relative_elementwise": 1e-5}},
+                       "elementwise_bound": "abs(error) <= atol * reference_rms + rtol * abs(reference)",
                        "mappings": [], "applied_mappings": 0}
 
     def begin_sample(self, index):
@@ -283,8 +284,20 @@ class AWQScalingCheck:
         rms = max((squared_reference / max(reference.numel(), 1)) ** 0.5, 1e-8)
         relative_rms = (squared_error / max(reference.numel(), 1)) ** 0.5 / rms
         normalized_max = max_error / rms
-        return (relative_rms <= rms_tolerance and normalized_max <= max_tolerance), {
-            "relative_rms_error": relative_rms, "max_error_over_rms": normalized_max}
+        # One BF16 ULP at a large activation can exceed an absolute bound
+        # based only on the tensor RMS. Keep the global RMS limit and also
+        # bound every element relative to its own magnitude. The absolute
+        # term continues to constrain near-zero outputs.
+        normalized_bound = 0.0
+        for start in range(0, reference.numel(), 1048576):
+            ref = reference[start:start + 1048576].float()
+            difference = (value[start:start + 1048576].float() - ref).abs()
+            allowance = max_tolerance * rms + rms_tolerance * ref.abs()
+            if difference.numel():
+                normalized_bound = max(normalized_bound, (difference / allowance).max().item())
+        return (relative_rms <= rms_tolerance and normalized_bound <= 1.0), {
+            "relative_rms_error": relative_rms, "max_error_over_rms": normalized_max,
+            "max_error_over_elementwise_tolerance": normalized_bound}
 
     @torch.no_grad()
     def verify(self, layer, samples, device):
