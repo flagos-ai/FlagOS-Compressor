@@ -12,8 +12,16 @@ from flagos_compressor.core.dtypes import (
 from flagos_compressor.io.hf_checkpoint import HfSafetensorsCheckpoint
 
 
-def validate_artifact(model_path: str | Path) -> dict:
+def validate_artifact(model_path: str | Path, *, allow_incomplete: bool = False) -> dict:
     path = Path(model_path)
+    if (path / "_INCOMPLETE").exists() and not allow_incomplete:
+        return {
+            "valid": False, "errors": ["Checkpoint is marked _INCOMPLETE"],
+            "tensors": 0, "shards": 0, "total_size": 0,
+            "int4_tensors": 0, "int8_tensors": 0,
+            "has_manifest": (path / "quantization_manifest.json").exists(),
+            "native_method": None, "native_algorithm": None, "native_quantized_tensors": 0,
+        }
     checkpoint = HfSafetensorsCheckpoint(path)
     errors: list[str] = []
     observed: set[str] = set()

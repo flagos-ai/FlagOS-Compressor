@@ -1,4 +1,4 @@
-"""Bound accelerator memory when decoding large FP8/FP4 tables to CPU BF16."""
+"""Decode FP8/FP4 on the selected backend in chunks, with BF16 output on CPU."""
 
 import torch
 
@@ -12,6 +12,11 @@ def iter_bf16_chunks(
     params,
     max_chunk_elements=16 * 1024 * 1024,
 ):
+    """Yield CPU BF16 chunks after dequantizing each chunk on ``backend``.
+
+    ``max_chunk_elements`` counts decoded values, not bytes. Chunks contain
+    complete scale-row blocks, so one such block is the minimum chunk size.
+    """
     if weight.ndim != 2 or scale is None:
         raise ValueError("Chunked dequantization requires a scaled 2D weight")
     if params.get("qkv_groups"):
@@ -47,7 +52,12 @@ def iter_bf16_chunks(
         yield start, value.to(device="cpu", dtype=torch.bfloat16).contiguous()
 
 
-def dequantize_bf16_cpu(weight, scale, input_format, backend, context, params):
+def dequantize_bf16_chunked_to_cpu(weight, scale, input_format, backend, context, params):
+    """Assemble a CPU BF16 tensor from chunks dequantized on ``backend``.
+
+    Keeping the complete output on CPU bounds accelerator memory used by the
+    decoded weight and its workspace; it does not select CPU execution.
+    """
     columns = weight.shape[1] * (2 if input_format.name == "fp4_e2m1_e8m0" else 1)
     result = torch.empty((weight.shape[0], columns), dtype=torch.bfloat16, device="cpu")
     for start, chunk in iter_bf16_chunks(
@@ -55,3 +65,7 @@ def dequantize_bf16_cpu(weight, scale, input_format, backend, context, params):
     ):
         result[start : start + chunk.shape[0]].copy_(chunk)
     return result
+
+
+# Deprecated compatibility name; retain for the first release with the rename.
+dequantize_bf16_cpu = dequantize_bf16_chunked_to_cpu
