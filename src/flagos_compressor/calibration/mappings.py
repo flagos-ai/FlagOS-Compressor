@@ -77,6 +77,40 @@ def _can_balance_linear_pair(
     )
 
 
+def _deepseek_attention_consumers(modules, root, *, latent=False):
+    """Include floating-point branches fed by the same scaled activation.
+
+    A module can be excluded from quantization and still require balancing.
+    V4's compressed attention and indexer share both the normalized hidden
+    input and the normalized low-rank query with the selected projections.
+    """
+    if modules[root].__class__.__name__ not in {
+        "DeepseekV4Attention", "DeepseekV41Attention",
+    }:
+        return ()
+    leaves = (
+        ("q_b_proj", "compressor.indexer.q_b_proj", "indexer.q_b_proj")
+        if latent else (
+            "q_a_proj", "kv_proj", "compressor.kv_proj", "compressor.gate_proj",
+            "compressor.indexer.kv_proj", "compressor.indexer.gate_proj",
+            "compressor.indexer.scorer.weights_proj", "indexer.weights_proj",
+        )
+    )
+    return tuple(f"{root}.{leaf}" for leaf in leaves
+                 if _is_weight_consumer(modules.get(f"{root}.{leaf}")))
+
+
+def _has_clipped_up_activation(module):
+    # Linearized experts retain their original bound _apply_gate method;
+    # shared experts expose limit directly.
+    gate = getattr(module, "apply_gate", None)
+    owner = getattr(gate, "__self__", module)
+    limit = getattr(owner, "limit", None)
+    if limit is None:
+        limit = getattr(getattr(owner, "config", None), "swiglu_limit", None)
+    return isinstance(limit, (int, float)) and 0 < limit < float("inf")
+
+
 def infer_awq_mappings(layer: nn.Module, selected: set[str]) -> list[AWQMapping]:
     """Infer AutoAWQ scale relations from common Transformers module structure."""
     modules = dict(layer.named_modules())
@@ -114,7 +148,8 @@ def infer_awq_mappings(layer: nn.Module, selected: set[str]) -> list[AWQMapping]
             ),
         )
         if previous and qkv:
-            mappings.append(AWQMapping(previous, qkv, qkv, root, root))
+            balance = tuple(dict.fromkeys(qkv + _deepseek_attention_consumers(modules, root)))
+            mappings.append(AWQMapping(previous, qkv, balance, root, root))
 
         # DeepSeek/GLM MLA uses low-rank A -> RMSNorm -> B projection pairs.
         # Balance the B projection against its own latent-space norm instead of
@@ -137,11 +172,15 @@ def infer_awq_mappings(layer: nn.Module, selected: set[str]) -> list[AWQMapping]
                 None,
             )
             if latent_norm and projection:
+                balance = (projection,)
+                if projection.rsplit(".", 1)[-1] in {"q_b_proj", "wq_b"}:
+                    balance = tuple(dict.fromkeys(
+                        balance + _deepseek_attention_consumers(modules, root, latent=True)))
                 mappings.append(
                     AWQMapping(
                         latent_norm,
                         (projection,),
-                        (projection,),
+                        balance,
                         projection,
                         projection,
                     )
@@ -242,7 +281,11 @@ def infer_awq_mappings(layer: nn.Module, selected: set[str]) -> list[AWQMapping]
                 ),
                 None,
             )
-            if down_name:
+            # clamp(up / s, +/-limit) * s != clamp(up, +/-limit).
+            # Keep quantizing down_proj, but do not absorb its input scale into
+            # up_proj across a fixed activation clamp. Changing the runtime's
+            # clamp would require an explicit per-channel inference contract.
+            if down_name and not _has_clipped_up_activation(modules[parent]):
                 mappings.append(
                     AWQMapping(
                         up_name,

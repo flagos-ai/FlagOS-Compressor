@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import copy
+
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
@@ -106,7 +108,6 @@ def search_awq_scale(
     if not linears:
         raise ValueError("AWQ scale search requires at least one Linear")
     kwargs = dict(kwargs or {})
-    kwargs.pop("use_cache", None)
     device = next(module.parameters()).device
     inputs = inputs.to(device)
 
@@ -117,7 +118,16 @@ def search_awq_scale(
     weight_mean = normalized.view(original_shape).mean(dim=0).float()
     input_mean = inputs.detach().abs().reshape(-1, inputs.shape[-1]).float().mean(dim=0)
 
-    reference = _first_tensor(module(inputs, **kwargs)).detach()
+    def forward():
+        # Each candidate starts from the captured state, including caches that
+        # the model creates even when use_cache=False.
+        prepared = dict(kwargs)
+        for name in ("past_key_values", "past_key_value", "shared"):
+            if prepared.get(name) is not None:
+                prepared[name] = copy.deepcopy(prepared[name])
+        return _first_tensor(module(inputs, **prepared))
+
+    reference = forward().detach()
     original_weights = [linear.weight.detach().clone() for linear in linears]
     best_error = float("inf")
     best_scales: torch.Tensor | None = None
@@ -136,7 +146,9 @@ def search_awq_scale(
 
         try:
             for linear in linears:
-                scaled = linear.weight.data * scale_view
+                # Match apply_awq_scale's in-place storage rounding before
+                # fake quantization, while retaining FP32 scale statistics.
+                scaled = (linear.weight.data * scale_view).to(linear.weight.dtype)
                 linear.weight.copy_(
                     pseudo_quantize_awq(
                         scaled,
@@ -146,7 +158,7 @@ def search_awq_scale(
                     ).weight
                     / scale_view
                 )
-            candidate = _first_tensor(module(inputs, **kwargs))
+            candidate = forward()
             error = _mse_chunked(reference, candidate, max_chunk_memory)
             if error < best_error:
                 best_error = error

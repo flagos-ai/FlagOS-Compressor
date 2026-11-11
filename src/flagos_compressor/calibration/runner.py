@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
+from pathlib import Path
 import logging
 from typing import Any
 
 import torch
 from torch import nn
 
+from flagos_compressor.calibration.awq_inputs import AWQCall, AWQReplay
+from flagos_compressor.calibration.awq_safety import (
+    AWQConsumerDiscovery, AWQScalingCheck, AWQScaleTransaction,
+)
 from flagos_compressor.calibration.inputs import LayerKwargs, samples_with_layer_kwargs
 from flagos_compressor.calibration.mappings import (
     gptq_sequential_groups,
@@ -17,6 +23,7 @@ from flagos_compressor.calibration.mappings import (
 from flagos_compressor.calibration.modeling import (
     forward_layer_samples,
     move_to_device,
+    prepare_forward_kwargs,
     sanitize_kwargs,
 )
 from flagos_compressor.core.policy import QuantizationPolicy
@@ -161,27 +168,19 @@ def _run_samples(
     layer: nn.Module,
     samples: list[tuple[tuple[Any, ...], dict[str, Any]]],
     device: torch.device,
+    *,
+    before_forward=None,
+    after_forward=None,
 ) -> None:
     layer.to(device)
-    for args, kwargs in samples:
+    for index, (args, kwargs) in enumerate(samples):
         moved_args = move_to_device(args, device)
-        moved_kwargs = move_to_device(sanitize_kwargs(layer, kwargs), device)
-        layer(*moved_args, **moved_kwargs)
-
-
-def _forward_kwargs_for_submodule(
-    module: nn.Module,
-    sample_kwargs: dict[str, Any],
-    device: torch.device,
-) -> dict[str, Any]:
-    kwargs = sanitize_kwargs(module, sample_kwargs)
-    # AWQ evaluates a captured attention input repeatedly. Reusing a mutable KV
-    # cache would append the same tokens on every grid-search candidate and can
-    # also mix batch shapes across samples (notably on DeepSeek-V4).
-    for cache_name in ("past_key_values", "past_key_value"):
-        if cache_name in kwargs:
-            kwargs[cache_name] = None
-    return move_to_device(kwargs, device)
+        moved_kwargs = prepare_forward_kwargs(layer, kwargs, device)
+        if before_forward is not None:
+            before_forward(index)
+        output = layer(*moved_args, **moved_kwargs)
+        if after_forward is not None:
+            after_forward(index, output, moved_kwargs)
 
 
 def _capture_awq_input(
@@ -557,15 +556,23 @@ def quantize_layer_awq(
     policy: QuantizationPolicy,
     *,
     device: torch.device,
+    scaling_report: dict[str, Any] | None = None,
 ) -> dict[str, NativeQuantizedLayer]:
     linears = selected_linears(layer_name, layer, policy)
     if not linears:
+        if scaling_report is not None:
+            scaling_report.update(state="skipped", reason="no_selected_linears")
         return {}
     _validate_native_shapes(linears, policy)
     _validate_fused_moe_selection(layer_name, layer, set(linears))
     layer.to(device)
     modules = dict(layer.named_modules())
     mappings = infer_awq_mappings(layer, set(linears))
+    discovery = AWQConsumerDiscovery(layer, mappings)
+    scaling_check = AWQScalingCheck(layer, samples)
+    if scaling_report is not None:
+        scaling_report.update(scaling_check.report)
+        scaling_check.report = scaling_report
     feature_names = set(linears)
     feature_names.update(
         mapping.input_name for mapping in mappings if mapping.input_name in modules
@@ -573,6 +580,7 @@ def quantize_layer_awq(
     features: dict[str, list[torch.Tensor]] = {
         name: [] for name in sorted(feature_names)
     }
+    calls = {mapping.inspect_name: [] for mapping in mappings}
     handles = [
         modules[name].register_forward_pre_hook(
             lambda module, args, kwargs, name=name: _capture_awq_input(
@@ -586,11 +594,20 @@ def quantize_layer_awq(
         )
         for name in sorted(feature_names)
     ]
+    handles.extend(
+        modules[name].register_forward_pre_hook(
+            lambda _m, args, kwargs, name=name: calls[name].append(AWQCall.capture(args, kwargs)),
+            with_kwargs=True,
+        ) for name in calls
+    )
     try:
-        _run_samples(layer, samples, device)
+        with discovery.capture(), scaling_check.capture_branches(layer):
+            _run_samples(layer, samples, device, before_forward=scaling_check.begin_sample,
+                         after_forward=scaling_check.observe)
     finally:
         for handle in handles:
             handle.remove()
+    mappings, scaling_check.report["mappings"] = discovery.resolve()
     inputs = {name: torch.cat(values, dim=0) for name, values in features.items() if values}
     _require_routed_expert_coverage(
         layer,
@@ -599,33 +616,36 @@ def quantize_layer_awq(
         "AWQ",
     )
 
-    for mapping in mappings:
-        if mapping.input_name not in inputs:
-            continue
-        previous = modules[mapping.previous_name]
-        search_linears = [linears[name] for name in mapping.quantized_names]
-        balance = [modules[name] for name in mapping.linear_names]
-        inspect_module = modules[mapping.inspect_name]
-        kwargs = (
-            _forward_kwargs_for_submodule(inspect_module, samples[0][1], device)
-            if mapping.inspect_name.rsplit(".", 1)[-1] in {"self_attn", "attention", "attn", "linear_attn"}
-            else {}
-        )
-        scales = search_awq_scale(
-            inspect_module,
-            search_linears,
-            inputs[mapping.input_name],
-            kwargs=kwargs,
-            group_size=int(policy.group_size or 128),
-            zero_point=policy.awq.zero_point,
-            duo_scaling=policy.awq.duo_scaling,
-            n_grid=policy.awq.n_grid,
-            max_chunk_memory=policy.awq.max_chunk_memory,
-        )
-        apply_awq_scale(previous, balance, scales)
-        for name in mapping.linear_names:
-            if name in inputs:
-                inputs[name].div_(scales.view(1, -1))
+    try:
+        with AWQScaleTransaction(layer) as transaction:
+            for mapping in mappings:
+                if mapping.input_name not in inputs:
+                    continue
+                previous = modules[mapping.previous_name]
+                search_linears = [linears[name] for name in mapping.quantized_names]
+                balance = [modules[name] for name in mapping.linear_names]
+                inspect_module = AWQReplay(modules[mapping.inspect_name], calls[mapping.inspect_name])
+                transaction.remember(previous, balance)
+                scales = search_awq_scale(
+                    inspect_module,
+                    search_linears,
+                    inputs[mapping.input_name],
+                    group_size=int(policy.group_size or 128),
+                    zero_point=policy.awq.zero_point,
+                    duo_scaling=policy.awq.duo_scaling,
+                    n_grid=policy.awq.n_grid,
+                    max_chunk_memory=policy.awq.max_chunk_memory,
+                )
+                apply_awq_scale(previous, balance, scales)
+                scaling_check.branch_exclusions.add(mapping.previous_name)
+                scaling_check.report["applied_mappings"] += 1
+                for name in mapping.linear_names:
+                    if name in inputs:
+                        inputs[name].div_(scales.view(1, -1))
+            scaling_check.verify(layer, samples, device)
+    except Exception as exc:
+        scaling_check.report.update(state="failed", error=str(exc), weights_restored=True)
+        raise
 
     if policy.awq.apply_clip:
         for name, linear in linears.items():
@@ -664,6 +684,18 @@ def quantize_layer_awq(
     return results
 
 
+def _write_awq_report(
+    path: str | Path | None, layers: list[dict[str, Any]], state: str
+) -> None:
+    if path is None:
+        return
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps({"state": state, "layers": layers}, indent=2) + "\n")
+    temporary.replace(path)
+
+
 @torch.no_grad()
 def quantize_model_sequential(
     layers: list[tuple[str, nn.Module]],
@@ -671,8 +703,10 @@ def quantize_model_sequential(
     policy: QuantizationPolicy,
     *,
     device: torch.device,
+    awq_report_path: str | Path | None = None,
     layer_kwargs: LayerKwargs | None = None,
 ) -> dict[str, NativeQuantizedLayer]:
+    awq_layers: list[dict[str, Any]] = []
     samples = first_layer_samples
     fp_samples = first_layer_samples
     all_results: dict[str, NativeQuantizedLayer] = {}
@@ -695,9 +729,21 @@ def quantize_model_sequential(
                 layer_name, layer, samples, policy, device=device
             )
         elif policy.method == "awq":
-            results = quantize_layer_awq(
-                layer_name, layer, samples, policy, device=device
-            )
+            record = {"name": layer_name, "state": "running", "awq_scaling": {}}
+            awq_layers.append(record)
+            try:
+                results = quantize_layer_awq(
+                    layer_name, layer, samples, policy, device=device,
+                    scaling_report=record["awq_scaling"],
+                )
+            except Exception as exc:
+                record.update(state="failed", error=str(exc))
+                if record["awq_scaling"].get("state") in {None, "pending"}:
+                    record["awq_scaling"].update(state="failed", error=str(exc))
+                _write_awq_report(awq_report_path, awq_layers, "failed")
+                raise
+            record["state"] = "complete"
+            _write_awq_report(awq_report_path, awq_layers, "running")
         elif policy.method == "autoround":
             results, fp_samples, samples = quantize_layer_autoround(
                 layer_name,
@@ -715,6 +761,8 @@ def quantize_model_sequential(
             samples = forward_layer_samples(layer, samples, device=device)
         layer.cpu()
         _empty_device_cache(device)
+    if policy.method == "awq":
+        _write_awq_report(awq_report_path, awq_layers, "complete")
     return all_results
 
 

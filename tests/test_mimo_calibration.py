@@ -1,6 +1,7 @@
 """Exercise MiMo's layer-dependent input contract without downloading weights."""
 
 import copy
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -153,7 +154,7 @@ def test_hybrid_layer_replay_matches_full_forward(pattern, swa_name, batch_size)
 
 
 @pytest.mark.parametrize("method", ["gptq", "awq", "autoround"])
-def test_all_calibrators_use_each_layers_mask_and_rope(method):
+def test_all_calibrators_use_each_layers_mask_and_rope(method, tmp_path):
     torch.manual_seed(7)
     model = _HybridModel((0, 1, 0))
     layers = decoder_layers(model)
@@ -184,12 +185,18 @@ def test_all_calibrators_use_each_layers_mask_and_rope(method):
                 autoround=AutoRoundPolicy(iters=2, batch_size=1),
             ),
             device=torch.device("cpu"), layer_kwargs=layer_kwargs,
+            awq_report_path=tmp_path / "awq_scaling_report.json" if method == "awq" else None,
         )
     finally:
         for handle in handles:
             handle.remove()
     assert len(results) == 21
     assert all(count >= 2 for count in calls.values())
+    if method == "awq":
+        report = json.loads((tmp_path / "awq_scaling_report.json").read_text())
+        assert report["state"] == "complete"
+        assert [item["name"] for item in report["layers"]] == [name for name, _ in layers]
+        assert all(item["awq_scaling"]["state"] == "passed" for item in report["layers"])
 
 
 def test_non_mimo_uses_existing_first_layer_capture():

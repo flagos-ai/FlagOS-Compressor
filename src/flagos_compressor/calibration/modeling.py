@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import inspect
 from collections import Counter
 from math import prod
@@ -161,6 +162,24 @@ def move_to_device(value: Any, device: torch.device) -> Any:
     return value
 
 
+def prepare_forward_kwargs(
+    module: nn.Module, kwargs: dict[str, Any], device: torch.device
+) -> dict[str, Any]:
+    """Replay a calibration sample without mutating its captured KV cache.
+
+    Some models (including DeepSeek-V4 compressed attention) create a cache
+    even with use_cache=False. Reusing that object across GPTQ groups, AWQ
+    candidates or AutoRound iterations appends the same sequence repeatedly.
+    Preserve the captured cache type/configuration, but give each call its own
+    copy. Setting it to None changes compressed-attention behavior.
+    """
+    prepared = sanitize_kwargs(module, kwargs)
+    for name in ("past_key_values", "past_key_value", "shared"):
+        if prepared.get(name) is not None:
+            prepared[name] = copy.deepcopy(prepared[name])
+    return move_to_device(prepared, device)
+
+
 class _CapturedLayerInput(RuntimeError):
     pass
 
@@ -217,7 +236,7 @@ def forward_layer_samples(
     layer.to(device)
     for args, kwargs in samples:
         moved_args = move_to_device(args, device)
-        moved_kwargs = sanitize_kwargs(layer, move_to_device(kwargs, device))
+        moved_kwargs = prepare_forward_kwargs(layer, kwargs, device)
         output = layer(*moved_args, **moved_kwargs)
         hidden = output[0] if isinstance(output, (tuple, list)) else output
         if hasattr(output, "last_hidden_state"):
@@ -232,5 +251,6 @@ __all__ = [
     "forward_layer_samples",
     "load_transformers_model",
     "move_to_device",
+    "prepare_forward_kwargs",
     "sanitize_kwargs",
 ]
