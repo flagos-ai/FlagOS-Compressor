@@ -40,8 +40,8 @@ def _calibration_source(model_path: str, backend):
 
 def _run_calibrated(args, policy) -> None:
     from flagos_compressor.calibration.data import build_calibration_batches
+    from flagos_compressor.calibration.inputs import prepare_calibration_inputs
     from flagos_compressor.calibration.modeling import (
-        capture_first_layer_inputs,
         decoder_layers,
         load_transformers_model,
     )
@@ -61,9 +61,9 @@ def _run_calibrated(args, policy) -> None:
         )
         layers = decoder_layers(model)
         batches = build_calibration_batches(tokenizer, policy.calibration)
-        samples = capture_first_layer_inputs(
+        samples, layer_kwargs = prepare_calibration_inputs(
             model,
-            layers[0][1],
+            layers,
             batches,
             device=device,
         )
@@ -74,6 +74,7 @@ def _run_calibrated(args, policy) -> None:
             device=device,
             awq_report_path=(Path(args.output) / "awq_scaling_report.json"
                              if policy.method == "awq" else None),
+            layer_kwargs=layer_kwargs,
         )
         autoround_config = None
         if policy.method == "autoround":

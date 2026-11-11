@@ -15,6 +15,7 @@ from flagos_compressor.calibration.awq_inputs import AWQCall, AWQReplay
 from flagos_compressor.calibration.awq_safety import (
     AWQConsumerDiscovery, AWQScalingCheck, AWQScaleTransaction,
 )
+from flagos_compressor.calibration.inputs import LayerKwargs, samples_with_layer_kwargs
 from flagos_compressor.calibration.mappings import (
     gptq_sequential_groups,
     infer_awq_mappings,
@@ -703,12 +704,19 @@ def quantize_model_sequential(
     *,
     device: torch.device,
     awq_report_path: str | Path | None = None,
+    layer_kwargs: LayerKwargs | None = None,
 ) -> dict[str, NativeQuantizedLayer]:
     awq_layers: list[dict[str, Any]] = []
     samples = first_layer_samples
     fp_samples = first_layer_samples
     all_results: dict[str, NativeQuantizedLayer] = {}
     for layer_index, (layer_name, layer) in enumerate(layers, start=1):
+        if layer_kwargs is not None:
+            samples = samples_with_layer_kwargs(samples, layer_kwargs[layer_name])
+            if policy.method == "autoround":
+                fp_samples = samples_with_layer_kwargs(
+                    fp_samples, layer_kwargs[layer_name]
+                )
         logger.info(
             "[%d/%d] %s calibration: %s",
             layer_index,
