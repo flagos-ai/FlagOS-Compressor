@@ -152,6 +152,7 @@ def validate_fusion_closure(
         (".gate_proj.weight", ".up_proj.weight"),
         (".w1.weight", ".w3.weight"),
         (".q_a_proj.weight", ".kv_a_proj_with_mqa.weight"),
+        (".q_a_proj.weight", ".kv_proj.weight"),
         (".wq_a.weight", ".wkv.weight"),
         (".wk.weight", ".weights_proj.weight"),
     )

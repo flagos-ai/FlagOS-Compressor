@@ -61,6 +61,18 @@ def _run_calibrated(args, policy) -> None:
             trust_remote_code=policy.calibration.trust_remote_code,
         )
         layers = decoder_layers(model)
+        if policy.target_scheme_rules:
+            from flagos_compressor.calibration.plan import build_calibration_plan
+
+            plan = build_calibration_plan(layers, policy)
+            output = Path(args.output)
+            output.mkdir(parents=True, exist_ok=True)
+            (output / "calibration_plan.json").write_text(
+                json.dumps(plan, indent=2) + "\n", encoding="utf-8"
+            )
+            logger.info(
+                "Resolved calibrated module bit widths: %s", plan["weight_bits_counts"]
+            )
         batches = build_calibration_batches(tokenizer, policy.calibration)
         samples, layer_kwargs = prepare_calibration_inputs(
             model,
@@ -73,9 +85,13 @@ def _run_calibrated(args, policy) -> None:
             samples,
             policy,
             device=device,
-            awq_report_path=(Path(args.output) / "awq_scaling_report.json"
-                             if policy.method == "awq" else None),
+            awq_report_path=(
+                Path(args.output) / "awq_scaling_report.json"
+                if policy.method == "awq"
+                else None
+            ),
             layer_kwargs=layer_kwargs,
+            report_path=Path(args.output) / "calibration_report.json",
         )
         autoround_config = None
         if policy.method == "autoround":
@@ -102,9 +118,10 @@ def _run_calibrated(args, policy) -> None:
             autoround_config=autoround_config,
         )
     logger.info(
-        "Done. %s-quantized Linear modules: %d",
+        "Done. Requested %s; calibrated Linear modules: %d; explicit RTN fallback modules: %d",
         policy.method.upper(),
-        len(quantized),
+        sum(result.algorithm == policy.method for result in quantized.values()),
+        sum(result.algorithm == "rtn" for result in quantized.values()),
     )
     logger.info("Checkpoint format: %s", policy.format)
 
@@ -161,6 +178,22 @@ def run(args) -> None:
             print(f"Calibration quantization: {policy.method} -> {policy.format}")
             print(f"  selected 2D weights: {len(selected)}")
             print(f"  selected fused expert banks: {len(fused)}")
+            if policy.target_scheme_rules:
+                from collections import Counter
+
+                counts = Counter()
+                for tensor in selected + fused:
+                    settings = policy.settings_for_name(
+                        tensor.effective_name, tensor.tags
+                    )
+                    counts[(settings.num_bits, settings.group_size)] += 1
+                for (bits, group), count in sorted(counts.items()):
+                    print(
+                        f"  W{bits}A16 group_size={group}: {count} checkpoint tensors/banks"
+                    )
+                print(
+                    "  Actual Linear-module plan and fusion checks run after Transformers conversion, before calibration."
+                )
             print(f"  calibration samples: {policy.calibration.samples}")
             print(f"  calibration sequence length: {policy.calibration.sequence_length}")
             return

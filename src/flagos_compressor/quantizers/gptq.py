@@ -120,6 +120,8 @@ class GPTQQuantizer:
             raise ValueError(
                 f"Expected GPTQ inputs ending in {self.columns}, got {tuple(inputs.shape)}"
             )
+        if inputs.numel() == 0:
+            return
         batch_samples = int(inputs.shape[0])
         if inputs.dim() == 3:
             inputs = inputs.reshape(-1, inputs.shape[-1])

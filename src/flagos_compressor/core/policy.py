@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import re
 
 from flagos_compressor.core.profile import TensorInfo
@@ -27,8 +27,11 @@ class CalibrationPolicy:
     split: str = "train"
     text_column: str = "text"
     trust_remote_code: bool = False
+    unobserved_policy: str = "error"
 
     def __post_init__(self) -> None:
+        if self.unobserved_policy not in {"error", "rtn"}:
+            raise ValueError("calibration.unobserved_policy must be error or rtn")
         if self.samples <= 0 or self.sequence_length <= 0:
             raise ValueError("calibration samples and sequence_length must be positive")
         if not self.split or not self.text_column:
@@ -291,8 +294,13 @@ class QuantizationPolicy:
                 "calibrated methods materialize source weights as BF16"
             )
         if self.target_scheme_rules:
-            if self.method != "mse":
-                raise ValueError("Selector-local rules currently require method='mse'")
+            if self.method != "mse" and any(
+                rule.activation_num_bits != 16 or rule.strategy != "group"
+                for rule in self.target_scheme_rules
+            ):
+                raise ValueError(
+                    "Calibrated selector-local rules require groupwise W4A16/W8A16"
+                )
             if self.selections or self.include_names:
                 raise ValueError(
                     "Selector-local rules cannot be combined with legacy selections"
@@ -300,12 +308,14 @@ class QuantizationPolicy:
         expected_format = {
             "mse": "compressed-tensors",
             "gptq": "gptq",
-            "awq": "awq",
+            "awq": "gptq" if self.target_scheme_rules else "awq",
             "autoround": "gptq",
         }[self.method]
         if self.format is None:
             object.__setattr__(self, "format", expected_format)
-        elif self.format != expected_format:
+        elif self.format != expected_format and not (
+            self.method == "awq" and self.format == "gptq"
+        ):
             raise ValueError(
                 f"method={self.method!r} requires format={expected_format!r}"
             )
@@ -315,9 +325,9 @@ class QuantizationPolicy:
             raise ValueError("activation_num_bits must be 8 or 16")
         if self.method in {"gptq", "awq", "autoround"} and self.activation_num_bits != 16:
             raise ValueError(f"{self.method.upper()} currently supports weight-only A16")
-        if self.method == "awq" and self.num_bits != 4:
+        if self.method == "awq" and self.format == "awq" and self.num_bits != 4:
             raise ValueError("AutoAWQ GEMM currently supports only 4-bit weights")
-        if self.method == "awq" and not self.awq.zero_point:
+        if self.method == "awq" and self.format == "awq" and not self.awq.zero_point:
             raise ValueError("Native AutoAWQ GEMM requires awq.zero_point=true")
         if self.method == "autoround" and not self.gptq.symmetric:
             raise ValueError("Native AutoRound currently requires symmetric weights")
@@ -399,19 +409,41 @@ class QuantizationPolicy:
         """Return the last matching rule, after applying global exclusions."""
         if tensor.role != "weight" or not self.target_scheme_rules:
             return None
-        tags = tuple(tensor.tags)
+        return self.target_scheme_rule_for_name(tensor.effective_name, tensor.tags)
+
+    def target_scheme_rule_for_name(
+        self, name: str, tags: tuple[str, ...]
+    ) -> TargetSchemeRule | None:
+        """Resolve checkpoint and live-module names with the same last-rule-wins contract."""
         if any(
             BUILTIN_SELECTIONS[item] in set(tags)
             for item in self.exclude_selections
         ):
             return None
-        if any(re.search(pattern, tensor.effective_name) for pattern in self.exclude_names):
+        if any(re.search(pattern, name) for pattern in self.exclude_names):
             return None
         return next(
             (
                 rule
                 for rule in reversed(self.target_scheme_rules)
-                if rule.matches_name(tensor.effective_name, tags)
+                if rule.matches_name(name, tags)
             ),
             None,
+        )
+
+    def settings_for_name(self, name: str, tags: tuple[str, ...]) -> QuantizationPolicy:
+        """Algorithm settings for an already selected logical weight."""
+        if not self.target_scheme_rules:
+            return self
+        rule = self.target_scheme_rule_for_name(name, tags)
+        if rule is None:
+            raise ValueError(f"No quantization rule selects {name}")
+        return replace(
+            self,
+            target_scheme_rules=(),
+            num_bits=rule.num_bits,
+            activation_num_bits=rule.activation_num_bits,
+            strategy=rule.strategy,
+            group_size=rule.group_size,
+            chunk_size=rule.chunk_size,
         )

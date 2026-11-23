@@ -33,10 +33,14 @@ Fused Qwen3.5-style expert banks use the logical shape `[num_experts, out_featur
 | W8A16 channel | Channel strategy is INT8 only; ordinary Linear, attention, and shared experts are supported, routed experts require group strategy | Channel-wise INT8 weight support |
 | W8A8 | `bits=8`, `activation_bits=8`, `strategy=channel`, no group size | Dynamic per-token INT8 activation and weight support |
 | GPTQ | Calibrated A16 group quantization and GPTQ ABI | GPTQ loader and matching packed kernels |
-| AWQ | Calibrated A16, 4-bit, group quantization with zero points | AWQ GEMM loader and matching kernels |
+| AWQ | Calibrated groupwise W4A16/W8A16; legacy AWQ GEMM requires W4 and zero points | AWQ GEMM for legacy exports; mixed exports require GPTQ-compatible loading with per-module overrides and matching symmetry support |
 | AutoRound | Calibrated A16 group quantization with symmetric weights and GPTQ ABI | GPTQ-compatible loader plus AutoRound provenance handling |
 
-Method and format are coupled: MSE uses `compressed-tensors`, GPTQ uses native `gptq`, AWQ uses native `awq`, and AutoRound uses the GPTQ ABI with AutoRound provenance.
+MSE uses `compressed-tensors`; GPTQ and AutoRound use the GPTQ ABI with their
+algorithm provenance. AWQ uses native `awq` for legacy homogeneous
+quantization and the GPTQ ABI for selector-local W4/W8 calibration. See
+[per-selector quantization](../how-to/per-selector-quantization.md) for
+calibrated mixed commands and fusion constraints.
 
 ## Backend compatibility
 
