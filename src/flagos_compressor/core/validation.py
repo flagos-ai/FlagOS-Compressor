@@ -426,8 +426,17 @@ def validate_artifact(model_path: str | Path, *, allow_incomplete: bool = False)
                         errors.append(
                             f"GPTQ dynamic override disagrees with module declaration: {prefix}"
                         )
-                if bits not in (4, 8) or group_size <= 0:
-                    errors.append(f"Invalid native quantization scheme for {prefix}")
+                if (
+                    type(bits) is not int
+                    or bits not in (4, 8)
+                    or type(group_size) is not int
+                    or group_size <= 0
+                ):
+                    errors.append(
+                        f"Invalid native quantization scheme for {prefix}: "
+                        f"bits={bits!r} (expected integer 4 or 8), "
+                        f"group_size={group_size!r} (expected positive integer)"
+                    )
                     continue
                 pack_factor = 32 // bits
                 int4_tensors += bits == 4
