@@ -116,9 +116,12 @@ requires symmetric W4 as well as W8. The runtime must support the exported
 per-module overrides, fused module names, and packed kernels. Successful
 calibration and structural validation do not establish runtime compatibility.
 
-Both halves of a fused attention projection and all projections in a routed
-expert bank must agree on bit width and group size. Unsupported combinations
-fail before calibration. Shared experts may use a different scheme from the
+All members of a fused attention projection and all projections in a routed
+expert bank must agree on bit width and group size. This includes sibling
+`q_proj`, `k_proj`, and `v_proj` weights loaded into one fused QKV runtime
+parameter: quantize all three with the same scheme or leave all three floating
+point. Unsupported combinations fail before calibration and are checked again
+during GPTQ-compatible export. Shared experts may use a different scheme from the
 routed bank. Calibrated workflows materialize source FP4/FP8 as BF16;
 unselected modules remain floating point, and `unselected: preserve` is not
 supported for these methods.

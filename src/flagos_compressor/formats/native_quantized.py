@@ -301,10 +301,9 @@ def save_native_quantized_model(
             by_scheme[(module_bits, module_group, settings.get("sym", symmetric))].add(
                 name + ".weight"
             )
-        if per_module:
-            all_weights = [name + ".weight" for name in _runtime_linear_names(model)]
-            for members in by_scheme.values():
-                validate_fusion_closure(all_weights, members)
+        all_weights = [name + ".weight" for name in _runtime_linear_names(model)]
+        for members in by_scheme.values():
+            validate_fusion_closure(all_weights, members)
     output = Path(output_path)
     output.mkdir(parents=True, exist_ok=True)
     checkpoint = HfSafetensorsCheckpoint(source_path)
