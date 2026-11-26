@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from contextlib import nullcontext
 import json
-from pathlib import Path
 import logging
+from pathlib import Path
 from typing import Any
 
 import torch
@@ -24,7 +25,6 @@ from flagos_compressor.calibration.modeling import (
     forward_layer_samples,
     move_to_device,
     prepare_forward_kwargs,
-    sanitize_kwargs,
 )
 from flagos_compressor.core.policy import QuantizationPolicy
 from flagos_compressor.inspect.tensor_classifier import classify_weight
@@ -44,6 +44,18 @@ from flagos_compressor.quantizers.gptq import GPTQQuantizer
 logger = logging.getLogger(__name__)
 
 
+def _observe_rows(
+    coverage: dict[str, int] | None, name: str, inputs: torch.Tensor
+) -> None:
+    if coverage is not None:
+        coverage[name] = coverage.get(name, 0) + inputs.numel() // inputs.shape[-1]
+
+
+def _observe_gptq_batch(quantizer, inputs, coverage, name):
+    _observe_rows(coverage, name, inputs)
+    quantizer.add_batch(inputs)
+
+
 @dataclass(frozen=True)
 class NativeQuantizedLayer:
     """A quantized layer with independent algorithm and checkpoint packing."""
@@ -51,6 +63,11 @@ class NativeQuantizedLayer:
     algorithm: str
     packed: AutoGPTQPacked | AutoAWQPacked
     packing: str | None = None
+    fallback_from: str | None = None
+    fallback_reason: str | None = None
+    num_bits: int | None = None
+    group_size: int | None = None
+    symmetric: bool | None = None
 
     def __post_init__(self) -> None:
         if self.packing is None:
@@ -88,11 +105,19 @@ def _validate_fused_moe_selection(
             )
 
 
-def _fused_expert_linear_names(layer: nn.Module) -> set[str]:
-    """Return layer-relative Linear names owned by fused routed experts."""
+def _routed_expert_linear_names(layer: nn.Module) -> set[str]:
+    """Return native and linearized routed projections, excluding shared experts."""
     from flagos_compressor.calibration.moe import LinearExperts2D
 
-    names: set[str] = set()
+    names = {
+        name
+        for name, module in layer.named_modules()
+        if name
+        and isinstance(module, nn.Linear)
+        and "moe.routed" in classify_weight(f"{name}.weight")[1]
+    }
+    # Also retain ownership-based discovery for linearized banks with custom
+    # paths that do not carry the conventional ``experts`` name.
     for root, module in layer.named_modules():
         if not isinstance(module, LinearExperts2D):
             continue
@@ -110,17 +135,126 @@ def _require_routed_expert_coverage(
     observed: set[str],
     method: str,
     *,
-    fused_names: set[str] | None = None,
-) -> None:
-    required = (fused_names or _fused_expert_linear_names(layer)) & selected
+    routed_names: set[str] | None = None,
+    unobserved_policy: str = "error",
+) -> set[str]:
+    required = (
+        _routed_expert_linear_names(layer) if routed_names is None else routed_names
+    ) & selected
     missing = sorted(required - observed)
-    if missing:
+    if missing and unobserved_policy == "error":
         raise RuntimeError(
             f"{method} calibration did not route any tokens to "
             f"{len(missing)} selected expert projections. Increase calibration "
             "samples or use more representative data. First missing modules: "
             f"{missing[:3]}"
         )
+    if missing:
+        logger.warning(
+            "%s: %d unobserved expert projections will use explicit RTN fallback: %s",
+            method,
+            len(missing),
+            missing[:3],
+        )
+    return set(missing)
+
+
+@torch.no_grad()
+def _pack_awq_result(linear, result, policy):
+    if policy.format == "awq":
+        if result.zeros is None:
+            raise ValueError("AutoAWQ GEMM packing requires zero points")
+        return (
+            pack_autoawq_gemm(
+                result.weight,
+                result.scales,
+                result.zeros,
+                group_size=int(policy.group_size),
+                scale_dtype=torch.float16,
+            ),
+            "awq",
+        )
+    # The AWQ algorithm is independent of serialization. GPTQ-compatible
+    # packing supports both W4 and W8 without inventing an 8-bit AWQ GEMM ABI.
+    zeros = (
+        result.zeros
+        if result.zeros is not None
+        else torch.full_like(result.scales, 1 << (policy.num_bits - 1))
+    )
+    g_idx = torch.arange(
+        linear.in_features, device=result.weight.device, dtype=torch.int32
+    ) // int(policy.group_size)
+    return (
+        pack_autogptq(
+            result.weight.cpu(),
+            result.scales.cpu(),
+            zeros.cpu(),
+            g_idx.cpu(),
+            bits=policy.num_bits,
+            scale_dtype=linear.weight.dtype,
+        ),
+        "gptq",
+    )
+
+
+def _awq_zero_point(policy):
+    # vLLM's native GPTQ W8 kernels require symmetric weights. Preserve the
+    # existing asymmetric W4 AWQ scheme, and explicitly report W8 symmetry.
+    return policy.awq.zero_point and policy.num_bits == 4
+
+
+@torch.no_grad()
+def _rtn_fallback(linear, policy, name, coverage, *, reason):
+    """Keep the requested packing ABI while exposing the actual RTN algorithm."""
+    if policy.calibration.unobserved_policy != "rtn":
+        raise RuntimeError("RTN fallback must be explicitly enabled")
+    from flagos_compressor.quantizers.rtn import quantize_rtn
+
+    if policy.method == "awq":
+        result = pseudo_quantize_awq(
+            linear.weight,
+            bits=policy.num_bits,
+            group_size=int(policy.group_size),
+            zero_point=_awq_zero_point(policy),
+        )
+        packed, packing = _pack_awq_result(linear, result, policy)
+    else:
+        result = quantize_rtn(
+            linear.weight,
+            bits=policy.num_bits,
+            group_size=int(policy.group_size),
+            symmetric=policy.gptq.symmetric if policy.method == "gptq" else True,
+        )
+        packed = pack_autogptq(
+            result.weight.cpu(),
+            result.scales.cpu(),
+            result.zeros.cpu(),
+            result.g_idx.cpu(),
+            bits=policy.num_bits,
+            scale_dtype=linear.weight.dtype,
+        )
+        packing = "gptq"
+    linear.weight.copy_(result.weight)
+    if hasattr(coverage, "fallbacks"):
+        coverage.fallbacks[name] = {
+            "method": "rtn",
+            "requested_method": policy.method,
+            "reason": reason,
+        }
+    return NativeQuantizedLayer(
+        "rtn",
+        packed,
+        packing=packing,
+        fallback_from=policy.method,
+        fallback_reason=reason,
+        num_bits=policy.num_bits,
+        group_size=policy.group_size,
+        symmetric=(
+            not _awq_zero_point(policy)
+            if policy.method == "awq"
+            else policy.gptq.symmetric if policy.method == "gptq" else True
+        ),
+    )
 
 
 def _validate_native_shapes(
@@ -140,7 +274,7 @@ def _validate_native_shapes(
                 f"{name} out_features={linear.out_features} must be divisible by "
                 f"native pack factor {pack_factor}"
             )
-        if policy.method in {"gptq", "autoround"} and linear.in_features % pack_factor:
+        if policy.format == "gptq" and linear.in_features % pack_factor:
             raise ValueError(
                 f"{name} in_features={linear.in_features} must be divisible by "
                 f"native pack factor {pack_factor}"
@@ -161,6 +295,20 @@ def selected_linears(
         if policy.selects_name(full_weight_name, tags):
             selected[relative_name] = module
     return selected
+
+
+def _linear_settings(layer_name, layer, linears, policy):
+    settings = {}
+    for name, linear in linears.items():
+        _, tags = classify_weight(f"{layer_name}.{name}.weight")
+        settings[name] = policy.settings_for_name(f"{layer_name}.{name}.weight", tags)
+        _validate_native_shapes({name: linear}, settings[name])
+    if policy.target_scheme_rules:
+        from flagos_compressor.calibration.plan import validate_layer_schemes
+
+        validate_layer_schemes(layer_name, layer, settings)
+    _validate_fused_moe_selection(layer_name, layer, set(linears))
+    return settings
 
 
 @torch.no_grad()
@@ -210,12 +358,12 @@ def quantize_layer_gptq(
     policy: QuantizationPolicy,
     *,
     device: torch.device,
+    coverage: dict[str, int] | None = None,
 ) -> dict[str, NativeQuantizedLayer]:
     linears = selected_linears(layer_name, layer, policy)
     if not linears:
         return {}
-    _validate_native_shapes(linears, policy)
-    _validate_fused_moe_selection(layer_name, layer, set(linears))
+    settings = _linear_settings(layer_name, layer, linears, policy)
     groups = (
         gptq_sequential_groups(list(linears))
         if policy.gptq.true_sequential
@@ -227,14 +375,16 @@ def quantize_layer_gptq(
         quantizers = {
             name: GPTQQuantizer(
                 linears[name].weight,
-                bits=policy.num_bits,
+                bits=settings[name].num_bits,
                 symmetric=policy.gptq.symmetric,
             )
             for name in group
         }
         handles = [
             linears[name].register_forward_pre_hook(
-                lambda _module, args, q=quantizers[name]: q.add_batch(args[0])
+                lambda _module, args, q=quantizers[
+                    name
+                ], name=name: _observe_gptq_batch(q, args[0], coverage, name)
             )
             for name in group
         ]
@@ -243,7 +393,7 @@ def quantize_layer_gptq(
         finally:
             for handle in handles:
                 handle.remove()
-        _require_routed_expert_coverage(
+        missing = _require_routed_expert_coverage(
             layer,
             set(group),
             {
@@ -252,13 +402,23 @@ def quantize_layer_gptq(
                 if quantizer.num_samples > 0
             },
             "GPTQ",
+            unobserved_policy=policy.calibration.unobserved_policy,
         )
         for name in group:
             linear = linears[name]
+            if name in missing:
+                results[f"{layer_name}.{name}"] = _rtn_fallback(
+                    linear,
+                    settings[name],
+                    name,
+                    coverage,
+                    reason="no_calibration_input",
+                )
+                continue
             result = quantizers[name].quantize(
                 block_size=policy.gptq.block_size,
                 damp_percent=policy.gptq.damp_percent,
-                group_size=int(policy.group_size or -1),
+                group_size=int(settings[name].group_size or -1),
                 desc_act=policy.gptq.desc_act,
                 static_groups=policy.gptq.static_groups,
             )
@@ -268,10 +428,15 @@ def quantize_layer_gptq(
                 result.scales,
                 result.zeros,
                 result.g_idx,
-                bits=policy.num_bits,
+                bits=settings[name].num_bits,
                 scale_dtype=linear.weight.dtype,
             )
-            results[f"{layer_name}.{name}"] = NativeQuantizedLayer("gptq", packed)
+            results[f"{layer_name}.{name}"] = NativeQuantizedLayer(
+                "gptq",
+                packed,
+                num_bits=settings[name].num_bits,
+                group_size=settings[name].group_size,
+            )
     return results
 
 
@@ -307,10 +472,7 @@ def _autoround_loss(
     for sample_index in indices:
         args, kwargs = input_samples[sample_index]
         moved_args = move_to_device(args, device)
-        moved_kwargs = move_to_device(
-            sanitize_kwargs(layer, kwargs),
-            device,
-        )
+        moved_kwargs = prepare_forward_kwargs(layer, kwargs, device)
         predicted = _hidden_output(layer(*moved_args, **moved_kwargs))
         target = fp_outputs[sample_index][0][0].to(
             device=device,
@@ -367,6 +529,7 @@ def quantize_layer_autoround(
     *,
     device: torch.device,
     layer_index: int = 0,
+    coverage: dict[str, int] | None = None,
 ) -> tuple[
     dict[str, NativeQuantizedLayer],
     list[tuple[tuple[Any, ...], dict[str, Any]]],
@@ -376,7 +539,24 @@ def quantize_layer_autoround(
     if not fp_samples:
         raise ValueError("AutoRound requires at least one calibration sample")
     linears = selected_linears(layer_name, layer, policy)
-    fp_outputs = forward_layer_samples(layer, fp_samples, device=device)
+    settings = _linear_settings(layer_name, layer, linears, policy)
+    # Count the existing full reference pass rather than repeated optimizer
+    # minibatches, so coverage does not increase merely by raising iters.
+    handles = (
+        [
+            linear.register_forward_pre_hook(
+                lambda _module, args, name=name: _observe_rows(coverage, name, args[0])
+            )
+            for name, linear in linears.items()
+        ]
+        if coverage is not None
+        else []
+    )
+    try:
+        fp_outputs = forward_layer_samples(layer, fp_samples, device=device)
+    finally:
+        for handle in handles:
+            handle.remove()
     input_samples = (
         quantized_samples
         if policy.autoround.enable_quantized_input
@@ -390,9 +570,8 @@ def quantize_layer_autoround(
         )
         return {}, fp_outputs, quantized_outputs
 
-    _validate_native_shapes(linears, policy)
-    _validate_fused_moe_selection(layer_name, layer, set(linears))
-    fused_expert_linears = _fused_expert_linear_names(layer)
+    # Preserve the routed set before AutoRound replaces the Linear modules.
+    routed_expert_linears = _routed_expert_linear_names(layer)
     layer.to(device)
     original_grad_state = [
         (parameter, parameter.requires_grad) for parameter in layer.parameters()
@@ -403,8 +582,8 @@ def quantize_layer_autoround(
     wrappers = {
         name: AutoRoundLinear(
             linear,
-            bits=policy.num_bits,
-            group_size=int(policy.group_size or -1),
+            bits=settings[name].num_bits,
+            group_size=int(settings[name].group_size or -1),
             enable_minmax_tuning=policy.autoround.enable_minmax_tuning,
         )
         for name, linear in linears.items()
@@ -494,21 +673,36 @@ def quantize_layer_autoround(
             best_loss = final_loss
             best_parameters = _snapshot_autoround_parameters(wrappers)
 
-        _require_routed_expert_coverage(
+        if hasattr(coverage, "optimization_input_rows"):
+            coverage.optimization_input_rows = {
+                name: wrapper.num_optimization_rows
+                for name, wrapper in wrappers.items()
+            }
+        missing = _require_routed_expert_coverage(
             layer,
             set(linears),
             {
                 name
                 for name, wrapper in wrappers.items()
-                if wrapper.num_forwards > 0
+                if wrapper.num_optimization_rows > 0
             },
             "AutoRound",
-            fused_names=fused_expert_linears,
+            routed_names=routed_expert_linears,
+            unobserved_policy=policy.calibration.unobserved_policy,
         )
 
         results: dict[str, NativeQuantizedLayer] = {}
         with torch.no_grad():
             for name, wrapper in wrappers.items():
+                if name in missing:
+                    results[f"{layer_name}.{name}"] = _rtn_fallback(
+                        linears[name],
+                        settings[name],
+                        name,
+                        coverage,
+                        reason="no_optimization_input",
+                    )
+                    continue
                 best_value, best_minimum, best_maximum = best_parameters[name]
                 wrapper.value.copy_(best_value.to(device))
                 wrapper.min_scale.copy_(best_minimum.to(device))
@@ -520,19 +714,22 @@ def quantize_layer_autoround(
                     linear.in_features,
                     device=device,
                     dtype=torch.int32,
-                ) // int(policy.group_size or -1)
+                ) // int(settings[name].group_size or -1)
                 packed = pack_autogptq(
                     quantized.weight.cpu(),
                     quantized.scales.cpu(),
                     quantized.zeros.cpu(),
                     g_idx.cpu(),
-                    bits=policy.num_bits,
+                    bits=settings[name].num_bits,
                     scale_dtype=linear.weight.dtype,
                 )
                 results[f"{layer_name}.{name}"] = NativeQuantizedLayer(
                     "autoround",
                     packed,
                     packing="gptq",
+                    num_bits=settings[name].num_bits,
+                    group_size=settings[name].group_size,
+                    symmetric=True,
                 )
     finally:
         _restore_submodules(layer, linears)
@@ -557,14 +754,14 @@ def quantize_layer_awq(
     *,
     device: torch.device,
     scaling_report: dict[str, Any] | None = None,
+    coverage: dict[str, int] | None = None,
 ) -> dict[str, NativeQuantizedLayer]:
     linears = selected_linears(layer_name, layer, policy)
     if not linears:
         if scaling_report is not None:
             scaling_report.update(state="skipped", reason="no_selected_linears")
         return {}
-    _validate_native_shapes(linears, policy)
-    _validate_fused_moe_selection(layer_name, layer, set(linears))
+    settings = _linear_settings(layer_name, layer, linears, policy)
     layer.to(device)
     modules = dict(layer.named_modules())
     mappings = infer_awq_mappings(layer, set(linears))
@@ -608,12 +805,20 @@ def quantize_layer_awq(
         for handle in handles:
             handle.remove()
     mappings, scaling_check.report["mappings"] = discovery.resolve()
-    inputs = {name: torch.cat(values, dim=0) for name, values in features.items() if values}
-    _require_routed_expert_coverage(
+    inputs = {
+        name: torch.cat(nonempty, dim=0)
+        for name, values in features.items()
+        if (nonempty := [value for value in values if value.numel()])
+    }
+    for name in linears:
+        if name in inputs:
+            _observe_rows(coverage, name, inputs[name])
+    missing = _require_routed_expert_coverage(
         layer,
         set(linears),
         set(inputs),
         "AWQ",
+        unobserved_policy=policy.calibration.unobserved_policy,
     )
 
     try:
@@ -635,6 +840,14 @@ def quantize_layer_awq(
                     duo_scaling=policy.awq.duo_scaling,
                     n_grid=policy.awq.n_grid,
                     max_chunk_memory=policy.awq.max_chunk_memory,
+                    linear_schemes=[
+                        (
+                            settings[name].num_bits,
+                            int(settings[name].group_size),
+                            _awq_zero_point(settings[name]),
+                        )
+                        for name in mapping.quantized_names
+                    ],
                 )
                 apply_awq_scale(previous, balance, scales)
                 scaling_check.branch_exclusions.add(mapping.previous_name)
@@ -654,33 +867,36 @@ def quantize_layer_awq(
             maximum = search_awq_clip(
                 linear.weight,
                 inputs[name],
-                group_size=int(policy.group_size or 128),
-                zero_point=policy.awq.zero_point,
+                group_size=int(settings[name].group_size or 128),
+                zero_point=_awq_zero_point(settings[name]),
                 n_grid=policy.awq.n_grid,
+                bits=settings[name].num_bits,
             )
             apply_awq_clip(linear.weight, maximum)
 
     results: dict[str, NativeQuantizedLayer] = {}
     for name, linear in linears.items():
+        if name in missing:
+            results[f"{layer_name}.{name}"] = _rtn_fallback(
+                linear, settings[name], name, coverage, reason="no_calibration_input"
+            )
+            continue
         quantized = pseudo_quantize_awq(
             linear.weight,
-            bits=4,
-            group_size=int(policy.group_size or 128),
-            zero_point=policy.awq.zero_point,
+            bits=settings[name].num_bits,
+            group_size=int(settings[name].group_size or 128),
+            zero_point=_awq_zero_point(settings[name]),
         )
-        if quantized.zeros is None:
-            raise ValueError("Native AutoAWQ GEMM export requires zero_point=true")
         linear.weight.data.copy_(quantized.weight)
-        packed = pack_autoawq_gemm(
-            quantized.weight,
-            quantized.scales,
-            quantized.zeros,
-            group_size=int(policy.group_size or 128),
-            # AutoAWQ's native GEMM ABI serializes scales as FP16 even when
-            # the source model itself uses BF16.
-            scale_dtype=torch.float16,
+        packed, packing = _pack_awq_result(linear, quantized, settings[name])
+        results[f"{layer_name}.{name}"] = NativeQuantizedLayer(
+            "awq",
+            packed,
+            packing=packing,
+            num_bits=settings[name].num_bits,
+            group_size=settings[name].group_size,
+            symmetric=not _awq_zero_point(settings[name]),
         )
-        results[f"{layer_name}.{name}"] = NativeQuantizedLayer("awq", packed)
     return results
 
 
@@ -705,11 +921,19 @@ def quantize_model_sequential(
     device: torch.device,
     awq_report_path: str | Path | None = None,
     layer_kwargs: LayerKwargs | None = None,
+    report_path: str | Path | None = None,
 ) -> dict[str, NativeQuantizedLayer]:
     awq_layers: list[dict[str, Any]] = []
     samples = first_layer_samples
     fp_samples = first_layer_samples
     all_results: dict[str, NativeQuantizedLayer] = {}
+    from flagos_compressor.calibration.reporting import CalibrationReport
+
+    reporter = (
+        CalibrationReport(report_path, policy, len(first_layer_samples))
+        if report_path is not None
+        else None
+    )
     for layer_index, (layer_name, layer) in enumerate(layers, start=1):
         if layer_kwargs is not None:
             samples = samples_with_layer_kwargs(samples, layer_kwargs[layer_name])
@@ -724,45 +948,59 @@ def quantize_model_sequential(
             policy.method.upper(),
             layer_name,
         )
-        if policy.method == "gptq":
-            results = quantize_layer_gptq(
-                layer_name, layer, samples, policy, device=device
-            )
-        elif policy.method == "awq":
-            record = {"name": layer_name, "state": "running", "awq_scaling": {}}
-            awq_layers.append(record)
-            try:
-                results = quantize_layer_awq(
-                    layer_name, layer, samples, policy, device=device,
-                    scaling_report=record["awq_scaling"],
+        context = (
+            reporter.layer(layer_name, selected_linears(layer_name, layer, policy))
+            if reporter is not None
+            else nullcontext()
+        )
+        with context as coverage:
+            if policy.method == "gptq":
+                results = quantize_layer_gptq(
+                    layer_name, layer, samples, policy, device=device, coverage=coverage
                 )
-            except Exception as exc:
-                record.update(state="failed", error=str(exc))
-                if record["awq_scaling"].get("state") in {None, "pending"}:
-                    record["awq_scaling"].update(state="failed", error=str(exc))
-                _write_awq_report(awq_report_path, awq_layers, "failed")
-                raise
-            record["state"] = "complete"
-            _write_awq_report(awq_report_path, awq_layers, "running")
-        elif policy.method == "autoround":
-            results, fp_samples, samples = quantize_layer_autoround(
-                layer_name,
-                layer,
-                fp_samples,
-                samples,
-                policy,
-                device=device,
-                layer_index=layer_index,
-            )
-        else:
-            raise ValueError(f"Sequential runner does not support {policy.method}")
-        all_results.update(results)
-        if policy.method != "autoround":
-            samples = forward_layer_samples(layer, samples, device=device)
+            elif policy.method == "awq":
+                record = {"name": layer_name, "state": "running", "awq_scaling": {}}
+                awq_layers.append(record)
+                try:
+                    results = quantize_layer_awq(
+                        layer_name,
+                        layer,
+                        samples,
+                        policy,
+                        device=device,
+                        scaling_report=record["awq_scaling"],
+                        coverage=coverage,
+                    )
+                except Exception as exc:
+                    record.update(state="failed", error=str(exc))
+                    if record["awq_scaling"].get("state") in {None, "pending"}:
+                        record["awq_scaling"].update(state="failed", error=str(exc))
+                    _write_awq_report(awq_report_path, awq_layers, "failed")
+                    raise
+                record["state"] = "complete"
+                _write_awq_report(awq_report_path, awq_layers, "running")
+            elif policy.method == "autoround":
+                results, fp_samples, samples = quantize_layer_autoround(
+                    layer_name,
+                    layer,
+                    fp_samples,
+                    samples,
+                    policy,
+                    device=device,
+                    layer_index=layer_index,
+                    coverage=coverage,
+                )
+            else:
+                raise ValueError(f"Sequential runner does not support {policy.method}")
+            all_results.update(results)
+            if policy.method != "autoround":
+                samples = forward_layer_samples(layer, samples, device=device)
         layer.cpu()
         _empty_device_cache(device)
     if policy.method == "awq":
         _write_awq_report(awq_report_path, awq_layers, "complete")
+    if reporter is not None:
+        reporter.complete(len(all_results))
     return all_results
 
 

@@ -1,0 +1,35 @@
+# Shared-expert override follows the MoE rule; the last matching rule wins.
+version: 2
+method: gptq
+format: gptq
+select:
+  - target: attention
+    weight_format: int8
+    activation_bits: 16
+    strategy: group
+    group_size: 128
+  - target: moe
+    weight_format: int4
+    activation_bits: 16
+    strategy: group
+    group_size: 128
+  - target: moe.shared
+    weight_format: int8
+    activation_bits: 16
+    strategy: group
+    group_size: 128
+calibration:
+  data: /path/to/calibration.jsonl
+  samples: 256
+  sequence_length: 2048
+  seed: 42
+  unobserved_policy: error
+gptq:
+  symmetric: true
+  desc_act: false
+  true_sequential: true
+awq:
+  zero_point: false
+autoround:
+  iters: 200
+  batch_size: 8

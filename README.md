@@ -6,6 +6,7 @@ FlagOS-Compressor converts and quantizes local Hugging Face `safetensors` checkp
 
 - Convert supported low-precision checkpoint weights to BF16.
 - Quantize selected model modules with MSE, GPTQ, AWQ, or native AutoRound workflows.
+- Calibrate mixed INT4/INT8 weights with GPTQ, AWQ, or AutoRound using [per-selector schemes](docs/source/how-to/per-selector-quantization.md#calibrate-mixed-int4-and-int8-weights).
 - Inspect source checkpoints and validate generated artifacts from one CLI.
 
 ## Install

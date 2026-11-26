@@ -152,6 +152,7 @@ def validate_fusion_closure(
         (".gate_proj.weight", ".up_proj.weight"),
         (".w1.weight", ".w3.weight"),
         (".q_a_proj.weight", ".kv_a_proj_with_mqa.weight"),
+        (".q_a_proj.weight", ".kv_proj.weight"),
         (".wq_a.weight", ".wkv.weight"),
         (".wk.weight", ".weights_proj.weight"),
     )
@@ -173,6 +174,17 @@ def validate_fusion_closure(
                 errors.append(
                     "fused pair has mixed formats: " + ", ".join(sorted(pair))
                 )
+
+    # Standard attention projections are loaded into one QKVParallelLinear
+    # in vLLM. Only infer this unit when all three siblings exist; an isolated
+    # q_proj (for example in another attention architecture) is insufficient.
+    for name in sorted(all_weights):
+        if not name.endswith(".q_proj.weight"):
+            continue
+        root = name.removesuffix("q_proj.weight")
+        members = {root + proj + ".weight" for proj in ("q_proj", "k_proj", "v_proj")}
+        if members <= all_weights and 0 < len(members & selected) < len(members):
+            errors.append("fused QKV has mixed formats: " + ", ".join(sorted(members)))
 
     routed_pattern = re.compile(
         r"^(?P<bank>.*\.experts)\.(?P<expert>\d+)\."

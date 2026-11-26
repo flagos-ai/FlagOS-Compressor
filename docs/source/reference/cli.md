@@ -71,6 +71,11 @@ Per-selector mode is an alternate selection form. It uses clauses such as:
 
 Each clause starts with `SELECTOR=WEIGHT_FORMAT`, where the weight format is `int4` or `int8`. Selector-local options reuse CLI names without `--`: `activation-bits`, `strategy`, `group-size`, `scale-dtype`, and `chunk-size`. Local `activation-bits` and `strategy` are required. Built-in and name rules are ordered, with the last matching rule winning; global exclusions are applied afterward. Do not mix selector-local clauses with the legacy homogeneous selection form.
 
+GPTQ, AWQ, and AutoRound accept selector-local groupwise W4A16/W8A16
+clauses and export GPTQ-compatible tensors with calibration provenance.
+See [per-selector quantization](../how-to/per-selector-quantization.md#calibrate-mixed-int4-and-int8-weights)
+for mixed calibration examples.
+
 ### Quantization options
 
 | Option | Type | Default after policy resolution | Description |
@@ -106,6 +111,7 @@ The method determines the default format and restricts compatible formats:
 | `--calibration-seed` | integer | `42` | Sampling seed |
 | `--calibration-split` | string | `train` | Dataset split |
 | `--calibration-text-column` | string | `text` | Text field or dataset column |
+| `--calibration-unobserved-policy` | `error` or `rtn` | `error` | Fail on uncovered routed experts, or explicitly record RTN fallback weights |
 | `--trust-remote-code` / `--no-trust-remote-code` | flag | false | Allow remote Transformers model or tokenizer code when required; this is not passed to dataset loading |
 
 The `datasets` optional dependency is needed for Hugging Face dataset names. Local files do not require it. See [calibrate models](../how-to/calibrate-models.md).
@@ -132,7 +138,10 @@ The `datasets` optional dependency is needed for Hugging Face dataset names. Loc
 | `--awq-n-grid` | positive integer | `20` | Scaling search grid size |
 | `--awq-max-chunk-memory` | positive integer | `1073741824` | Maximum AWQ chunk memory in bytes |
 
-AWQ currently requires group strategy, A16 activations, 4-bit weights, and zero points.
+AWQ requires group strategy and A16 activations. Legacy GEMM exports require
+4-bit weights and zero points. Selector-local GPTQ-compatible exports support
+W4/W8; W8 is symmetric. Set `--no-awq-zero-point` when the target loader also
+requires symmetric W4. Check support for per-module overrides in that runtime.
 
 ### AutoRound options
 

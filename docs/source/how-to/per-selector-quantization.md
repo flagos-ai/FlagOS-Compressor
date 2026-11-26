@@ -42,7 +42,7 @@ Name rules continue to use `--select-name`:
 flagos-compressor quantize \
   --input /path/to/model \
   --output /path/to/output \
-  --select-name 'model\.layers\.0\..*=int8' \
+  --select-name 'model\.layers\.0\..*=int8' activation-bits=16 strategy=group group-size=128 \
   --backend cuda
 ```
 
@@ -62,13 +62,84 @@ flagos-compressor quantize \
 
 Do not mix selector-local clauses with legacy homogeneous selectors in one command. This prevents a selector from silently inheriting the wrong format.
 
-Per-selector mode currently supports MSE W4A16, W8A16, and W8A8. Do not combine selector-local settings with global `--bits`, `--activation-bits`, `--strategy`, `--group-size`, `--scale-dtype`, or `--chunk-size` settings for the same command. Global `--n-candidates`, `--exclude`, `--exclude-name`, the unselected-weight policy, and backend/device options remain available.
+Per-selector mode supports MSE W4A16, W8A16, and W8A8. GPTQ, AWQ, and AutoRound support calibrated groupwise W4A16 and W8A16. Do not combine selector-local settings with global `--bits`, `--activation-bits`, `--strategy`, `--group-size`, `--scale-dtype`, or `--chunk-size` settings for the same command. Global `--n-candidates`, `--exclude`, `--exclude-name`, the unselected-weight policy, and backend/device options remain available.
 
 The mapping is an artifact contract, not a runtime compatibility guarantee. For example, a DSV4 source FP8 attention weight matching `attention=int8` is exported as INT8 W8A8 storage, including `attn.wo_a`; it is not silently preserved as FP8 for a DeepGEMM implementation.
 
+## Calibrate mixed INT4 and INT8 weights
+
+Use the same selectors for all three calibration methods. For example, this
+command assigns attention W8A16 and MoE W4A16:
+
+```bash
+flagos-compressor quantize \
+  --input /path/to/DeepSeek-V4-Flash \
+  --output /path/to/DeepSeek-V4-Flash-awq-mixed \
+  --method awq \
+  --select attention=int8 activation-bits=16 strategy=group group-size=128 \
+  --select moe=int4 activation-bits=16 strategy=group group-size=128 \
+  --calibration-data /data/calibration/prompts.jsonl \
+  --calibration-samples 256 --calibration-seq-length 2048 \
+  --calibration-seed 42 --calibration-unobserved-policy error \
+  --no-desc-act --symmetric --no-awq-zero-point \
+  --backend cuda --device cuda:0
+```
+
+Replace `--method awq` with `gptq` or `autoround` to use that method for both
+bit widths. Append `--select moe.shared=int8 activation-bits=16 strategy=group
+group-size=128` to make shared experts W8A16 while routed experts remain W4A16.
+Later rules override earlier ones.
+
+The same configurations are available as
+[`calibrated-mixed-attention8-moe4.yaml`](../../../examples/recipes/calibrated-mixed-attention8-moe4.yaml)
+and [`calibrated-mixed-attention8-routed4-shared8.yaml`](../../../examples/recipes/calibrated-mixed-attention8-routed4-shared8.yaml).
+Set `--method gptq`, `--method awq`, or `--method autoround` when using either
+recipe, and replace its calibration-data path with your prepared corpus.
+
+GPTQ uses the resolved bit width for each matrix's Hessian-based quantization.
+AWQ scale and clipping searches use each participating matrix's resolved
+scheme, including mixed W4/W8 matrices in one scaling relationship. AutoRound
+optimizes the decoder output with independently configured W4/W8 wrappers.
+
+These calibrated mixed checkpoints use GPTQ-compatible packed tensors and
+`quant_method: gptq` for loading. The `algorithm` field records the calibration
+method for AWQ and AutoRound; GPTQ uses its canonical `quant_method`. AWQ does
+not run GPTQ calibration. Legacy homogeneous AWQ retains its AutoAWQ GEMM
+format. In AWQ's GPTQ-compatible mixed format, W8 is symmetric;
+W4 uses the requested AWQ zero-point setting
+(asymmetric by default). Per-module `sym` metadata records this distinction.
+`--symmetric` configures GPTQ and AutoRound; it does not override AWQ's
+`--awq-zero-point` setting.
+
+Use `--no-awq-zero-point`, as in the command above, when the target loader
+requires symmetric W4 as well as W8. The runtime must support the exported
+per-module overrides, fused module names, and packed kernels. Successful
+calibration and structural validation do not establish runtime compatibility.
+
+All members of a fused attention projection and all projections in a routed
+expert bank must agree on bit width and group size. This includes sibling
+`q_proj`, `k_proj`, and `v_proj` weights loaded into one fused QKV runtime
+parameter: quantize all three with the same scheme or leave all three floating
+point. Unsupported combinations fail before calibration and are checked again
+during GPTQ-compatible export. Shared experts may use a different scheme from the
+routed bank. Calibrated workflows materialize source FP4/FP8 as BF16;
+unselected modules remain floating point, and `unselected: preserve` is not
+supported for these methods.
+
+Use `--calibration-unobserved-policy error` to require activation coverage.
+With `rtn`, unobserved experts use RTN at their requested bit width; the
+calibration report and checkpoint configuration record each fallback, and
+`algorithm` gains a `+rtn` suffix.
+
+Mixed calibration writes `calibration_plan.json` with resolved per-module
+schemes and retained modules. `calibration_report.json` records activation
+coverage and explicit fallbacks, including failures. AWQ also retains its
+separate `awq_scaling_report.json` for checking floating-point scaling before
+rounding.
+
 ## Understand the output
 
-The command writes one compressed-tensors checkpoint with a configuration group for every requested scheme. A mixed W4A16/W8A8 result uses the `mixed-precision` top-level format and declares `pack-quantized` or `int-quantized` on each group.
+MSE writes one compressed-tensors checkpoint with a configuration group for every requested scheme. A mixed W4A16/W8A8 result uses the `mixed-precision` top-level format and declares `pack-quantized` or `int-quantized` on each group. Calibrated methods write native GPTQ-compatible tensors, dynamic bit-width overrides, and the exact `flagos_module_quantization` mapping.
 
 DSV4 fused-attention and shared-expert runtime aliases are included in the generated mapping. Source-quantized weights that match no rule follow the existing `unselected` policy and are converted to BF16 by default.
 

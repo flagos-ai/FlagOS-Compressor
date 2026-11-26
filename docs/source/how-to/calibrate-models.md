@@ -109,6 +109,10 @@ flagos-compressor quantize \
 
 Source FP4 or FP8 weights are staged as BF16 before Transformers loads the calibration model. In Transformers-v5 scenarios, fused experts may be temporarily exposed as per-expert `nn.Linear` modules for calibration.
 
+GPTQ, AWQ, and AutoRound can also calibrate groupwise W4A16/W8A16 in one
+checkpoint. See [per-selector quantization](per-selector-quantization.md#calibrate-mixed-int4-and-int8-weights)
+for shared CLI settings, export formats, and AWQ symmetry constraints.
+
 ## Control sampling
 
 Use these options to make calibration reproducible:

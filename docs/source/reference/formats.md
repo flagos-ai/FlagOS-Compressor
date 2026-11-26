@@ -113,6 +113,12 @@ The input and output dimensions must satisfy the corresponding pack-factor divis
 
 Native GPTQ and AutoRound remove the original `.weight` tensor and export the native tensors. AutoRound uses this GPTQ ABI and retains `algorithm: autoround` provenance in metadata. It does not define a separate AutoRound storage ABI.
 
+Selector-local AWQ also uses this GPTQ-compatible ABI for W4/W8 mixtures,
+with `algorithm: awq` provenance and per-module `bits`, `group_size`, and
+`sym` settings in `flagos_module_quantization`. Calibration still uses AWQ's
+scale and clipping searches. AWQ W8 is symmetric; use
+`--no-awq-zero-point` when the target runtime also requires symmetric W4.
+
 ## Native AWQ GEMM storage
 
 Native AWQ GEMM uses:
@@ -129,7 +135,7 @@ The selected layer's `in_features` must be divisible by the group size, and `out
 0, 2, 4, 6, 1, 3, 5, 7
 ```
 
-This is not simple consecutive nibble order. Native AWQ exports use `quant_config.json`. Native GPTQ and AutoRound exports use `quantize_config.json`.
+This is not simple consecutive nibble order. AWQ GEMM exports use `quant_config.json`. GPTQ-compatible exports, including mixed AWQ and AutoRound, use `quantize_config.json`.
 
 ## Fused expert naming
 

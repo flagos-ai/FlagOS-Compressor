@@ -380,19 +380,67 @@ def validate_artifact(model_path: str | Path, *, allow_incomplete: bool = False)
                 errors.append(
                     f"Native {candidate_method.upper()} group_size must be positive"
                 )
-            pack_factor = 32 // bits if bits in {4, 8} else 0
+            base_bits, base_group_size = bits, group_size
             qweights = sorted(name for name in tensor_meta if name.endswith(".qweight"))
             native_quantized_tensors = len(qweights)
-            if bits == 4:
-                int4_tensors += native_quantized_tensors
-            elif bits == 8:
-                int8_tensors += native_quantized_tensors
+            declared_modules = quant_config.get("flagos_module_quantization")
+            if declared_modules is not None and set(declared_modules) != {
+                name.removesuffix(".qweight") for name in qweights
+            }:
+                errors.append(
+                    "GPTQ module declarations do not match packed checkpoint modules"
+                )
             if not qweights:
                 errors.append(
                     f"Native {candidate_method.upper()} config has no qweight tensors"
                 )
             for qweight_name in qweights:
                 prefix = qweight_name[: -len(".qweight")]
+                bits, group_size = base_bits, base_group_size
+                symmetric = quant_config.get("sym", True)
+                if candidate_method == "gptq":
+                    import re
+
+                    for pattern, overrides in (
+                        quant_config.get("dynamic") or {}
+                    ).items():
+                        if re.match(
+                            pattern.removeprefix("+:").removeprefix("-:"), prefix
+                        ):
+                            if pattern.startswith("-:"):
+                                errors.append(
+                                    f"Packed GPTQ module is excluded by dynamic config: {prefix}"
+                                )
+                            else:
+                                bits = overrides.get("bits", bits)
+                                group_size = overrides.get("group_size", group_size)
+                                symmetric = overrides.get("sym", symmetric)
+                            break
+                    declared = (
+                        quant_config.get("flagos_module_quantization") or {}
+                    ).get(prefix)
+                    effective = {"bits": bits, "group_size": group_size}
+                    if declared is not None and "sym" in declared:
+                        effective["sym"] = symmetric
+                    if declared is not None and declared != effective:
+                        errors.append(
+                            f"GPTQ dynamic override disagrees with module declaration: {prefix}"
+                        )
+                if (
+                    type(bits) is not int
+                    or bits not in (4, 8)
+                    or type(group_size) is not int
+                    or group_size <= 0
+                ):
+                    errors.append(
+                        f"Invalid native quantization scheme for {prefix}: "
+                        f"bits={bits!r} (expected integer 4 or 8), "
+                        f"group_size={group_size!r} (expected positive integer)"
+                    )
+                    continue
+                pack_factor = 32 // bits
+                int4_tensors += bits == 4
+                int8_tensors += bits == 8
                 if f"{prefix}.weight" in tensor_meta:
                     errors.append(
                         f"Native quantized module {prefix} also stores a float weight"

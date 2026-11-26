@@ -110,6 +110,11 @@ def build_parser() -> argparse.ArgumentParser:
     quantize.add_argument("--calibration-split")
     quantize.add_argument("--calibration-text-column")
     quantize.add_argument(
+        "--calibration-unobserved-policy",
+        choices=["error", "rtn"],
+        help="Zero-coverage routed experts: fail (default), or explicitly export RTN fallback weights.",
+    )
+    quantize.add_argument(
         "--trust-remote-code",
         action=argparse.BooleanOptionalAction,
         default=None,
@@ -141,6 +146,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--awq-zero-point",
         action=argparse.BooleanOptionalAction,
         default=None,
+        help="Use AWQ asymmetric W4 (default). Use --no-awq-zero-point for symmetric W4/W8 mixed checkpoints.",
     )
     quantize.add_argument(
         "--awq-duo-scaling",

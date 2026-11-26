@@ -108,6 +108,7 @@ class AutoRoundLinear(nn.Module):
         self.bits = bits
         self.group_size = group_size
         self.num_forwards = 0
+        self.num_optimization_rows = 0
         groups = linear.in_features // group_size
         self.value = nn.Parameter(torch.zeros_like(linear.weight, dtype=torch.float32))
         self.min_scale = nn.Parameter(
@@ -152,6 +153,8 @@ class AutoRoundLinear(nn.Module):
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         self.num_forwards += 1
+        if torch.is_grad_enabled():
+            self.num_optimization_rows += inputs.numel() // inputs.shape[-1]
         quantized = self.quantized()
         return F.linear(inputs, quantized.weight, self.linear.bias)
 

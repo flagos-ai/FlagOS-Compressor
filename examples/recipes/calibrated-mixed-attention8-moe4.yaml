@@ -1,0 +1,31 @@
+# Use --method gptq, awq, or autoround with this recipe.
+# Request symmetric AWQ W4/W8; verify mixed loading in the target runtime.
+version: 2
+method: gptq
+format: gptq
+select:
+  - target: attention
+    weight_format: int8
+    activation_bits: 16
+    strategy: group
+    group_size: 128
+  - target: moe
+    weight_format: int4
+    activation_bits: 16
+    strategy: group
+    group_size: 128
+calibration:
+  data: /path/to/calibration.jsonl
+  samples: 256
+  sequence_length: 2048
+  seed: 42
+  unobserved_policy: error
+gptq:
+  symmetric: true
+  desc_act: false
+  true_sequential: true
+awq:
+  zero_point: false
+autoround:
+  iters: 200
+  batch_size: 8

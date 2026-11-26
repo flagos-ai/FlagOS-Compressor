@@ -53,6 +53,26 @@ def _source_checkpoint(tmp_path, model):
     return source
 
 
+def test_native_export_rejects_rtn_without_explicit_fallback_provenance(tmp_path):
+    from flagos_compressor.quantizers.rtn import quantize_rtn
+
+    model = _ToyModel()
+    result = quantize_rtn(model.proj.weight, bits=4, group_size=8, symmetric=True)
+    packed = pack_autogptq(
+        result.weight, result.scales, result.zeros, result.g_idx, bits=4
+    )
+    with pytest.raises(ValueError, match="another method"):
+        save_native_quantized_model(
+            "unused",
+            tmp_path / "export",
+            model,
+            {"proj": NativeQuantizedLayer("rtn", packed, packing="gptq")},
+            method="gptq",
+            bits=4,
+            group_size=8,
+        )
+
+
 @pytest.mark.parametrize("method", ["gptq", "awq"])
 def test_native_export_is_sharded_configured_and_validated(tmp_path, method):
     torch.manual_seed(3)

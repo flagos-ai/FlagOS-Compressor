@@ -400,6 +400,7 @@ def _build_calibration_policy(
             "split",
             "text_column",
             "trust_remote_code",
+            "unobserved_policy",
         },
     )
 
@@ -428,15 +429,14 @@ def _build_calibration_policy(
     return CalibrationPolicy(
         data=data,
         samples=int(value("calibration_samples", "samples", 128)),
-        sequence_length=int(
-            value("calibration_seq_length", "sequence_length", 512)
-        ),
+        sequence_length=int(value("calibration_seq_length", "sequence_length", 512)),
         seed=int(value("calibration_seed", "seed", 42)),
         split=str(value("calibration_split", "split", "train")),
         text_column=str(value("calibration_text_column", "text_column", "text")),
-        trust_remote_code=bool(
-            value("trust_remote_code", "trust_remote_code", False)
+        unobserved_policy=str(
+            value("calibration_unobserved_policy", "unobserved_policy", "error")
         ),
+        trust_remote_code=bool(value("trust_remote_code", "trust_remote_code", False)),
     )
 
 
@@ -651,12 +651,17 @@ def build_quantization_policy(args) -> QuantizationPolicy:
                 + ", ".join(conflicts)
             )
         requested_method = getattr(args, "method", None) or recipe.get("method")
-        if requested_method not in (None, "mse"):
-            raise ValueError("Selector-local rules currently support only --method mse")
+        if requested_method not in (None, "mse", "gptq", "awq", "autoround"):
+            raise ValueError("Unknown selector-local quantization method")
         requested_format = getattr(args, "format", None) or recipe.get("format")
-        if requested_format not in (None, "compressed-tensors"):
+        expected_format = (
+            "gptq"
+            if requested_method in {"gptq", "awq", "autoround"}
+            else "compressed-tensors"
+        )
+        if requested_format not in (None, expected_format):
             raise ValueError(
-                "Selector-local rules require --format compressed-tensors"
+                f"Selector-local {requested_method or 'mse'} rules require --format {expected_format}"
             )
 
     def value(name: str, default):
