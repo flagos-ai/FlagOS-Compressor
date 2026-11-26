@@ -105,11 +105,19 @@ def _validate_fused_moe_selection(
             )
 
 
-def _fused_expert_linear_names(layer: nn.Module) -> set[str]:
-    """Return layer-relative Linear names owned by fused routed experts."""
+def _routed_expert_linear_names(layer: nn.Module) -> set[str]:
+    """Return native and linearized routed projections, excluding shared experts."""
     from flagos_compressor.calibration.moe import LinearExperts2D
 
-    names: set[str] = set()
+    names = {
+        name
+        for name, module in layer.named_modules()
+        if name
+        and isinstance(module, nn.Linear)
+        and "moe.routed" in classify_weight(f"{name}.weight")[1]
+    }
+    # Also retain ownership-based discovery for linearized banks with custom
+    # paths that do not carry the conventional ``experts`` name.
     for root, module in layer.named_modules():
         if not isinstance(module, LinearExperts2D):
             continue
@@ -127,10 +135,12 @@ def _require_routed_expert_coverage(
     observed: set[str],
     method: str,
     *,
-    fused_names: set[str] | None = None,
+    routed_names: set[str] | None = None,
     unobserved_policy: str = "error",
 ) -> set[str]:
-    required = (fused_names or _fused_expert_linear_names(layer)) & selected
+    required = (
+        _routed_expert_linear_names(layer) if routed_names is None else routed_names
+    ) & selected
     missing = sorted(required - observed)
     if missing and unobserved_policy == "error":
         raise RuntimeError(
@@ -560,7 +570,8 @@ def quantize_layer_autoround(
         )
         return {}, fp_outputs, quantized_outputs
 
-    fused_expert_linears = _fused_expert_linear_names(layer)
+    # Preserve the routed set before AutoRound replaces the Linear modules.
+    routed_expert_linears = _routed_expert_linear_names(layer)
     layer.to(device)
     original_grad_state = [
         (parameter, parameter.requires_grad) for parameter in layer.parameters()
@@ -676,7 +687,7 @@ def quantize_layer_autoround(
                 if wrapper.num_optimization_rows > 0
             },
             "AutoRound",
-            fused_names=fused_expert_linears,
+            routed_names=routed_expert_linears,
             unobserved_policy=policy.calibration.unobserved_policy,
         )
 
