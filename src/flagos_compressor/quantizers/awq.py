@@ -126,9 +126,9 @@ def search_awq_scale(
     weight_sum = torch.zeros(linears[0].in_features, device=device, dtype=torch.float32)
     weight_rows = 0
     for linear, (_, local_group, _) in zip(linears, schemes):
-        normalized = linear.weight.view(-1, local_group).abs()
+        normalized = linear.weight.reshape(-1, local_group).abs()
         normalized = normalized / (normalized.amax(dim=1, keepdim=True) + 1e-6)
-        weight_sum.add_(normalized.view_as(linear.weight).float().sum(dim=0))
+        weight_sum.add_(normalized.reshape_as(linear.weight).float().sum(dim=0))
         weight_rows += linear.out_features
     weight_mean = weight_sum / weight_rows
     del normalized, weight_sum

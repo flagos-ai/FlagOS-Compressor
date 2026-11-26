@@ -1,3 +1,6 @@
+import copy
+
+import pytest
 import torch
 from torch import nn
 
@@ -81,6 +84,39 @@ def test_awq_scale_and_clip_search_return_channelwise_values():
     )
     assert maxima.shape == (8, 2, 1)
     assert torch.isfinite(maxima).all()
+
+
+@pytest.mark.parametrize("schemes", [None, [(4, 4, True), (8, 8, False)]])
+def test_awq_scale_search_handles_transposed_expert_weights(schemes):
+    from flagos_compressor.calibration.moe import LinearExperts2D
+
+    torch.manual_seed(23)
+    source = nn.Module()
+    source.hidden_dim = 8
+    # Transposed expert storage: [experts, in_features, out_features].
+    source.gate_up_proj = nn.Parameter(torch.randn(2, 8, 32) * 0.1)
+    source.down_proj = nn.Parameter(torch.randn(2, 16, 8) * 0.1)
+    expert = LinearExperts2D(source)[0]
+    contiguous = copy.deepcopy(expert)
+    for parameter in contiguous.parameters():
+        parameter.data = parameter.data.contiguous()
+    originals = copy.deepcopy(expert.state_dict())
+    strides = {name: p.stride() for name, p in expert.named_parameters()}
+    assert not expert.gate_proj.weight.is_contiguous()
+    inputs = torch.randn(6, 8)
+
+    def search(module):
+        return search_awq_scale(
+            module, [module.gate_proj, module.up_proj], inputs,
+            group_size=4, n_grid=4, linear_schemes=schemes,
+        )
+
+    actual = search(expert)
+    torch.testing.assert_close(actual, search(contiguous))
+    assert torch.isfinite(actual).all()
+    for name, parameter in expert.named_parameters():
+        torch.testing.assert_close(parameter, originals[name], rtol=0, atol=0)
+        assert parameter.stride() == strides[name]
 
 
 def test_awq_scale_preserves_zero_centered_qwen_rmsnorm_linear_pair():
